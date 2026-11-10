@@ -1343,7 +1343,14 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   function bDaily(x){ return (B.budget && B.totM) ? B.budget * bM(x) / B.totM : null; }
 
   function radrFetch(name, cb){
-    var urls = ['https://eni-radr.com/api/product/' + name];
+    // 网页版：优先读仓库内由 Actions 每 10 分钟刷新的同源快照，绕开 eni-radr.com 的跨域限制
+    var base = name.split('?')[0];
+    var urls = [];
+    if (base === 'overview' || base === 'price'){
+      urls.push('./radar-' + base + '.json');
+      urls.push('../radar-' + base + '.json');
+    }
+    urls.push('https://eni-radr.com/api/product/' + name);
     if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') urls.push('/__radr/' + name);
     var ui = 0, tries = 0;
     function attempt(){
