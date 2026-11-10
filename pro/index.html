@@ -2479,7 +2479,18 @@ function edxSha256(ascii) {
       }
       var d = document.createElement('div');
       d.id = 'edx-pro-sheet';
-      d.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:99990;background:rgba(4,6,11,.985);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);overflow-y:auto;padding:18px 14px 130px;box-sizing:border-box';
+      // 全屏 PWA（添加到主屏幕）下顶部会顶到状态栏，这里补安全区内边距
+      var saTop = 0;
+      try {
+        var pr = document.createElement('div');
+        pr.style.cssText = 'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
+        document.body.appendChild(pr);
+        saTop = pr.getBoundingClientRect().height || 0;
+        document.body.removeChild(pr);
+        if (!saTop && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) saTop = 30;
+      } catch (e) {}
+      var padTop = 18 + saTop;
+      d.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:99990;background:rgba(4,6,11,.985);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);overflow-y:auto;padding:' + padTop + 'px 14px 130px;box-sizing:border-box';
       d.innerHTML =
         '<div style="max-width:520px;margin:0 auto">' +
           '<div style="display:flex;align-items:flex-start;justify-content:space-between">' +
