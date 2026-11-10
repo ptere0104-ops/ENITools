@@ -2620,6 +2620,25 @@ function edxSha256(ascii) {
       var on = active();
       var L = lic();
 
+      // 付费版：移除「清除本地缓存」，避免误点后设备码变化、已购激活码失效
+      var ccBtn = document.getElementById('edx-cache-clear');
+      if (ccBtn && !ccBtn.getAttribute('data-pro-lock')){
+        ccBtn.setAttribute('data-pro-lock', '1');
+        ccBtn.setAttribute('disabled', 'disabled');
+        ccBtn.setAttribute('aria-hidden', 'true');
+        ccBtn.addEventListener('click', function(e){
+          e.preventDefault(); e.stopPropagation();
+          toast('PRO 版已禁用缓存清理，清除会导致设备码变化、激活码失效', true);
+        }, true);
+        var ccSide = ccBtn.parentNode;
+        if (ccSide) ccSide.style.display = 'none';
+        var ccTip = document.createElement('div');
+        ccTip.setAttribute('id', 'edx-pro-cachelock');
+        ccTip.style.cssText = 'margin:7px 2px 0;font-size:9px;color:#8b93a7;line-height:1.5';
+        ccTip.textContent = 'PRO 版已锁定缓存清理：清除会改变设备码，已购激活码将失效；需要更新持币人数据请用「立即刷新持币人」。';
+        if (ccSide && ccSide.parentNode) ccSide.parentNode.appendChild(ccTip);
+      }
+
       // 阶梯挂单：能看，不能改
       var p = document.querySelector('.pane[data-tab="signal"]');
       if (p){
