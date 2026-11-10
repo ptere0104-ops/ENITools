@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#04060b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="ENITools" />
-    <meta name="application-name" content="ENITools" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <title>ENITools</title>
+    <title>ENIDEX // 量化分析终端</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
@@ -146,7 +144,7 @@ PERFORMANCE OF THIS SOFTWARE.
               <div style="font-size:10px;color:${Z}">涨跌 ${H>=0?"+":""}${H.toFixed(2)}%</div>
               <div style="color:#8d99ab;font-size:10px">量 <b style="color:#c9d3e3">${_r(q.v)}</b> ${n} · 额 <b style="color:#c9d3e3">${_r(q.qv)}</b> ${i}</div>`}},xAxis:[{type:"category",data:m,gridIndex:0,boundaryGap:!0,axisLine:{lineStyle:{color:"rgba(242,193,78,0.22)"}},axisTick:{show:!1},splitLine:{show:!1},axisLabel:{color:"#5c687a",fontSize:9,fontFamily:"JetBrains Mono",interval:"auto",hideOverlap:!0,showMinLabel:!1,margin:8}},{type:"category",data:m,gridIndex:1,boundaryGap:!0,axisLine:{lineStyle:{color:"rgba(242,193,78,0.16)"}},axisTick:{show:!1},splitLine:{show:!1},axisLabel:{show:!1}}],yAxis:[{type:"value",gridIndex:0,scale:!0,min:k,max:N,position:"right",splitNumber:B,axisLine:{show:!1},axisTick:{show:!1},axisLabel:{color:"#6b7789",fontSize:9,fontFamily:"JetBrains Mono",formatter:E=>Be(E,r),margin:6},splitLine:{lineStyle:{color:"rgba(120,160,200,0.08)",type:"dashed"}}},{type:"value",gridIndex:1,min:0,max:w*1.2,axisLine:{show:!1},axisTick:{show:!1},axisLabel:{show:!1},splitLine:{show:!1}}],series:[{name:"K",type:"candlestick",data:_,barWidth:"66%",barMaxWidth:16,barMinWidth:3,itemStyle:{color:"rgba(62,224,176,0.88)",color0:"rgba(255,92,122,0.88)",borderColor:"#3ee0b0",borderColor0:"#ff5c7a",borderWidth:1,borderColorDoji:"rgba(201,211,227,0.55)"},emphasis:{itemStyle:{borderWidth:1.4}},z:2},...b.map(E=>({name:`MA${E.n}`,type:"line",data:E.data,smooth:!1,symbol:"none",connectNulls:!0,lineStyle:{width:1.2,color:E.color,opacity:.85},z:3})),{name:"VOL",type:"bar",xAxisIndex:1,yAxisIndex:1,data:x.map((E,O)=>({value:E,itemStyle:{color:f[O].c>=f[O].o?"rgba(62,224,176,0.42)":"rgba(255,92,122,0.38)"}})),barWidth:"66%",barMaxWidth:16,silent:!0}]},{notMerge:!0})},[f,a,r,n,i]);const g=be.useMemo(()=>{if(!f.length)return null;const y=f.map(m=>m.c);return{m5:wy(xh(y,5)),m10:wy(xh(y,10)),m30:wy(xh(y,30))}},[f]);return R.jsxs(Ss,{index:"02",title:"价格走势",subtitle:"PRICE TREND · MA5 · MA10 · MA30",className:"q5",right:R.jsxs("div",{className:"tf-tabs",children:[R.jsx("span",{className:"tf-pair",children:e}),Tne.map(y=>R.jsx("button",{type:"button",className:`tf-btn ${y.key===a?"is-active":""}`,onClick:()=>o(y.key),children:y.label},y.key))]}),children:[R.jsxs("div",{className:"trend-wrap",children:[R.jsx("div",{className:"trend-canvas",ref:u}),R.jsxs("div",{className:"ma-legend",children:[kb.map(y=>R.jsxs("span",{className:"ma-item",children:[R.jsx("i",{style:{background:y.color}}),"MA",y.n,R.jsx("b",{children:g!=null&&g[`m${y.n}`]?Be(g[`m${y.n}`],r):"--"})]},y.n)),R.jsx("span",{className:"ma-live",children:l?"LIVE":"SNAPSHOT"}),f.length>0&&p/f.length>.35&&R.jsxs("span",{className:"ma-thin",children:["薄盘 · ",p,"/",f.length," 根无成交"]})]})]}),R.jsxs("div",{className:"chart-foot trend-foot",children:[R.jsxs("span",{children:["区间 ",f.length," 根 · ",a.toUpperCase()]}),R.jsx("span",{children:h?`${xy(h.from,a)} → ${xy(h.to,a)}`:"暂无数据"}),h&&R.jsxs(R.Fragment,{children:[R.jsxs("span",{className:`tf-chg ${d?"up":"down"}`,children:["区间涨跌 ",d?"+":"",h.chg.toFixed(2),"%"]}),R.jsxs("span",{children:["成交额 ",_r(h.qv)," ",i]})]})]})]})}function Eb({price:t,size:e,quote:r,pct:n,side:i,decimals:a,stamp:o=0}){const s=o>0&&Date.now()-o<900;return R.jsxs("div",{className:`ob-row ob-${i}${s?" is-flash":""}`,"data-stamp":o,children:[R.jsx("div",{className:"ob-fill",style:{width:`${n}%`}}),R.jsx("span",{className:"ob-price",children:Be(t,a)}),R.jsx("span",{className:"ob-size",children:kv(e)}),R.jsx("span",{className:"ob-amt",children:_r(r)})]})}function Ine({snap:t}){const e=t.asks.slice(0,12),r=t.bids.slice(0,12),n=t.bookStats,i=Math.max(1e-9,...e.map(L=>L.size)),a=Math.max(1e-9,...r.map(L=>L.size)),o=(L,I)=>Math.min(100,Math.max(4,L/(I==="ask"?i:a)*100)),s=(n==null?void 0:n.askQuote)??e.reduce((L,I)=>L+I.price*I.size,0),l=(n==null?void 0:n.bidQuote)??r.reduce((L,I)=>L+I.price*I.size,0),u=t.bookImbalance,c=(n==null?void 0:n.spread)??(e[0]&&r[0]?e[0].price-r[0].price:0),v=(n==null?void 0:n.spreadBps)??0,f=e[0]&&r[0]?(e[0].price+r[0].price)/2:t.price,h=((n==null?void 0:n.askLevels)??e.length)+((n==null?void 0:n.bidLevels)??r.length),d=((n==null?void 0:n.rawAsks)??e.length)+((n==null?void 0:n.rawBids)??r.length),p=be.useRef(""),g=be.useRef(new Map),[y,m]=be.useState(0),[_,S]=be.useState(Date.now()),[x,w]=be.useState({}),[b,T]=be.useState(Date.now());be.useEffect(()=>{const L=[...e.map(P=>["a",P]),...r.map(P=>["b",P])],I=L.map(([P,k])=>`${P}${k.price.toFixed(6)}:${k.size.toFixed(4)}`).join("|");if(I!==p.current){const P=p.current,k=new Map,N={},B=Date.now();for(const[E,O]of L){const V=`${E}${O.price}`;k.set(O.price*(E==="a"?1:-1),O.size);const q=g.current.get(O.price*(E==="a"?1:-1));(q===void 0||Math.abs(q-O.size)>1e-6)&&(N[V]=B)}g.current=k,p.current=I,w(N),I&&P!==""&&m(E=>E+1),S(B)}},[e,r]),be.useEffect(()=>{const L=window.setInterval(()=>T(Date.now()),1e3);return()=>window.clearInterval(L)},[]);const C=t.ticks.filter(L=>L.ts>=b/1e3-1).length,A=Math.max(0,Math.floor((b-_)/1e3)),M=A>=45;return R.jsxs(Ss,{index:"05",title:"订单簿",subtitle:"ORDER BOOK · 链上挂单 · 12 档",className:"q6",right:R.jsxs("div",{className:"ob-totals",children:[R.jsxs("span",{className:"ob-flow",title:"最近 1 秒的成交笔数（来自逐笔，不是估算）",children:["1s ",C," 笔"]}),R.jsxs("span",{className:`ob-seq ${M?"is-quiet":""}`,title:"盘口序号（每发生一次变动 +1）",children:["SEQ ",y," · ",A,"s 前"]}),R.jsxs("span",{className:"ob-total bid",children:["买 ",_r(l)]}),R.jsx("i",{className:"dot"}),R.jsxs("span",{className:"ob-total ask",children:["卖 ",_r(s)]})]}),children:[R.jsxs("div",{className:"ob-cols",children:[R.jsx("span",{children:"PRICE"}),R.jsxs("span",{children:["SIZE (",t.base,")"]}),R.jsxs("span",{children:["AMT (",t.quote,")"]})]}),R.jsxs("div",{className:"ob-book",children:[e.map((L,I)=>R.jsx(Eb,{price:L.price,size:L.size,quote:L.quote??L.price*L.size,pct:o(L.size,"ask"),side:"ask",decimals:t.decimals,stamp:x[`a${L.price}`]},`a-${L.price}-${I}-${x[`a${L.price}`]??0}`)),R.jsxs("div",{className:"ob-mid",children:[R.jsx("span",{className:"ob-mid-price",children:Be(t.price,t.decimals)}),R.jsxs("span",{className:"ob-mid-spread",children:["价差 ",Be(c,t.decimals)," · ",v.toFixed(1)," bps"]}),R.jsx("span",{className:"ob-mid-flag",children:"SPREAD"})]}),r.map((L,I)=>R.jsx(Eb,{price:L.price,size:L.size,quote:L.quote??L.price*L.size,pct:o(L.size,"bid"),side:"bid",decimals:t.decimals,stamp:x[`b${L.price}`]},`b-${L.price}-${I}-${x[`b${L.price}`]??0}`))]}),R.jsxs("div",{className:"ob-imbalance",children:[R.jsxs("span",{className:"ob-imb-label",children:["买盘 ",(u*100).toFixed(0),"%"]}),R.jsx("div",{className:"ob-imb-track",children:R.jsx("i",{className:"ob-imb-bid",style:{width:`${u*100}%`}})}),R.jsxs("span",{className:"ob-imb-label ask",children:["卖盘 ",((1-u)*100).toFixed(0),"%"]})]}),R.jsxs("div",{className:"chart-foot ob-foot",children:[R.jsx("span",{className:M?"ob-quiet":void 0,children:M?`盘口 ${A}s 未变动 · 每 1 秒仍在轮询，上游暂无新挂单/撤单`:`现价上下 35% 内挂单金额统计 · ${h} 档（原始 ${d} 档）`}),R.jsxs("span",{className:"ob-mid-ref",children:["MID ",Be(f,t.decimals)]})]})]})}const Pne=[{key:"all",label:"全部"},{key:"buy",label:"主动买"},{key:"sell",label:"主动卖"},{key:"big",label:"大单 ≥200"}];function kne({snap:t}){const[e,r]=be.useState("all"),[n,i]=be.useState(""),a=be.useRef(""),o=t.trades??[];be.useEffect(()=>{var v;const c=((v=o[0])==null?void 0:v.id)??"";if(c&&c!==a.current){a.current=c,i(c);const f=window.setTimeout(()=>i(""),900);return()=>window.clearTimeout(f)}},[o]);const s=be.useMemo(()=>e==="buy"?o.filter(c=>c.side==="buy"):e==="sell"?o.filter(c=>c.side==="sell"):e==="big"?o.filter(c=>(c.quote??c.price*c.size)>=200):o,[o,e]),l=o.filter(c=>c.side==="buy").length,u=()=>{const c="time,side,price,size,quote,trader",v=s.map(d=>[d.t,d.side==="buy"?"buy":"sell",d.price,d.size,(d.quote??d.price*d.size).toFixed(2),d.trader??""].join(",")).join(`
 `),f=new Blob([`${c}
-${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL.createObjectURL(f),h.download=`enidex-${t.pairKey}-trades.csv`,h.click(),URL.revokeObjectURL(h.href)};return R.jsxs(Ss,{index:"06",title:"实时成交",subtitle:`REAL-TIME TRADES · ${t.base} → ${t.quote} · 逐笔`,className:"q7",right:R.jsxs("div",{className:"tr-tools",children:[Pne.map(c=>R.jsx("button",{type:"button",className:`tr-chip ${e===c.key?"is-on":""}`,onClick:()=>r(c.key),children:c.label},c.key)),R.jsx("button",{type:"button",className:"tr-csv",onClick:u,children:"导出 CSV"})]}),children:[R.jsxs("div",{className:"tr-cols",children:[R.jsx("span",{children:"时间"}),R.jsx("span",{children:"方向"}),R.jsxs("span",{children:["价格（",t.quote,"）"]}),R.jsxs("span",{children:["数量（",t.base,"）"]}),R.jsxs("span",{children:["金额（",t.quote,"）"]}),R.jsx("span",{children:"交易者"})]}),R.jsxs("div",{className:"tr-body",children:[s.length===0&&R.jsx("div",{className:"tr-empty",children:"当前筛选条件下暂无成交"}),s.map(c=>R.jsxs("div",{className:`tr-row ${c.side==="buy"?"is-buy":"is-sell"} ${c.id===n?"is-flash":""}`,children:[R.jsx("span",{className:"tr-time",children:c.t}),R.jsx("span",{className:"tr-side",children:c.side==="buy"?"买":"卖"}),R.jsx("span",{className:"tr-price",children:Be(c.price,t.decimals)}),R.jsx("span",{className:"tr-size",children:kv(c.size)}),R.jsx("span",{className:"tr-amt",children:_r(c.quote??c.price*c.size)}),R.jsx("span",{className:"tr-trader",children:c.trader||"—"})]},c.id))]}),R.jsxs("div",{className:"chart-foot",children:[R.jsxs("span",{children:[o.length," 笔 · 显示 ",s.length," · 主动买 ",o.length?(l/o.length*100).toFixed(0):0,"%"]}),R.jsx("span",{className:"tr-live",children:"LIVE 1s"})]})]})}function Ene({snap:t}){var l;const e=t.overview,r=t.decimals,n=((l=t.bookStats)==null?void 0:l.spreadBps)??0,i=[{label:"24H 最高",value:Be(t.high24,r)},{label:"24H 最低",value:Be(t.low24,r)},{label:"24H 成交量",value:`${_r(t.vol24)} ${t.base}`},{label:"24H 成交额",value:`${_r(t.quoteVol24)} ${t.quote}`},{label:"24H 开盘",value:Be(t.open24,r)},{label:"当前价差",value:`${n.toFixed(0)} bps`},{label:"24H 成交笔数",value:e?`${e.tradeCount}${e.capped?"+":""}`:"—"},{label:"24H 活跃地址",value:e?`${e.users}`:"—"},{label:"24H 均价",value:Be((e==null?void 0:e.avgPrice24)??t.price,r)},{label:"24H 涨跌",value:`${t.change24h>=0?"+":""}${t.change24h.toFixed(2)}%`,tone:t.change24h>=0?"up":"down"}],a=(e==null?void 0:e.buy60)??0,o=(e==null?void 0:e.sell60)??0,s=(e==null?void 0:e.net60)??0;return R.jsxs(Ss,{index:"07",title:"24 小时概览",subtitle:"24H OVERVIEW · 子图 1H K 线汇总",className:"q8",right:R.jsx("span",{className:"st-tag",children:"SNAPSHOT · 1s"}),children:[R.jsx("div",{className:"st-grid",children:i.map(u=>R.jsxs("div",{className:"st-cell",children:[R.jsx("span",{className:"st-label",children:u.label}),R.jsx("span",{className:`st-value ${u.tone?`is-${u.tone}`:""}`,children:u.value})]},u.label))}),R.jsxs("div",{className:"st-window",children:[R.jsxs("div",{className:"st-w-cell",children:[R.jsx("span",{className:"st-label",children:"窗口主动买 · 60m"}),R.jsx("span",{className:"st-value is-up",children:_r(a)})]}),R.jsxs("div",{className:"st-w-cell",children:[R.jsx("span",{className:"st-label",children:"窗口主动卖 · 60m"}),R.jsx("span",{className:"st-value is-down",children:_r(o)})]}),R.jsxs("div",{className:"st-w-cell",children:[R.jsx("span",{className:"st-label",children:"净额"}),R.jsxs("span",{className:`st-value ${s>=0?"is-up":"is-down"}`,children:[s>=0?"+":"−",_r(Math.abs(s))]})]})]}),R.jsxs("div",{className:"chart-foot",children:[R.jsx("span",{children:"1H × 24 根 K 线汇总 · 笔数/地址来自近 24h 逐笔（3 分钟缓存）"}),R.jsxs("span",{className:"st-mid",children:["MID ",Be(t.price,r)]})]})]})}function Rne(){return R.jsx(Nne,{})}function Nne(){const t=new URLSearchParams(window.location.search).get("pair")||"",[e,r]=be.useState(C5.includes(t)?t:"ENI_USDT"),{snap:n,link:i,hits:a,retry:o}=jC(e),s=n.asks.slice(0,7),l=n.bids.slice(0,7),u=Math.max(1e-9,...s.map(m=>m.size),...l.map(m=>m.size)),c=A5(s,u),v=A5(l,u),f=n.change24h>=0,h=new Date(n.updatedAt).toLocaleTimeString("en-GB",{hour12:!1}),d=n.ticks[n.ticks.length-1],p=d&&Number.isFinite(d.ts)?Math.max(0,Math.floor(Date.now()/1e3-d.ts)):null,g=p===null?"--":p<60?`${p}s`:`${Math.floor(p/60)}m`,y=p!==null&&p>120;return R.jsxs("div",{className:"shell",children:[R.jsx("div",{className:"bg-layer bg-glow"}),R.jsx("div",{className:"bg-layer bg-grid"}),R.jsx("div",{className:"bg-layer scanlines"}),R.jsx("div",{className:"bg-layer vignette"}),R.jsx(DN,{snap:n,link:i,pairs:C5,activePair:e,onPair:r,onRetry:o,hits:a}),R.jsx("main",{className:"grid grid-top grid-solo",children:R.jsx(Ss,{index:"01",title:"高频 TICK 分时",subtitle:"HIGH-FREQUENCY TICK · 真实逐笔",className:"q1",right:R.jsxs("div",{className:"q1-meta",children:[R.jsxs("span",{className:`mini-change ${f?"up":"down"}`,children:[f?"+":"",n.change24h.toFixed(2),"%"]}),R.jsxs("span",{className:`meta-tag meta-live ${y?"is-quiet":""}`,children:["最后成交 ",g," 前"]}),R.jsxs("span",{className:"meta-tag",children:[n.pair," · 24H"]})]}),children:R.jsx(xne,{ticks:n.ticks,price:n.price,high:n.high24,low:n.low24,open24:n.open24,change24h:n.change24h,decimals:n.decimals,pair:n.pair,vol24:n.vol24,base:n.base})})}),R.jsxs("section",{className:"sub-grid",children:[R.jsx(Lne,{pairKey:e,pair:n.pair,decimals:n.decimals,base:n.base,quote:n.quote}),R.jsx(bne,{candles:n.klines,snap:n})]}),R.jsxs("section",{className:"sub-grid sub-grid-1",children:[R.jsx(wne,{asks:c,bids:v,trades:n.trades,price:n.price,decimals:n.decimals,base:n.base,imbalance:n.bookImbalance}),R.jsx(Ine,{snap:n})]}),R.jsxs("section",{className:"sub-grid sub-grid-2",children:[R.jsx(kne,{snap:n}),R.jsx(Ene,{snap:n})]}),R.jsxs("footer",{className:"statusbar",children:[R.jsxs("span",{className:"sb-item",children:[R.jsx("i",{className:"sb-dot",style:{background:i==="live"?"#3ee0b0":i==="offline"?"#ff5c7a":"#f2c14e"}}),"FEED ",i==="live"?"LIVE":i==="stale"?"STALE":i==="booting"?"SYNC":"OFFLINE"]}),R.jsxs("span",{className:"sb-item",children:[n.source==="enidex-direct"?"直连 ENIDEX 子图":"本地代理 8118"," · POLL 1s · ",a," 次"]}),R.jsxs("span",{className:"sb-item",children:["LATENCY ",n.latencyMs,"ms"]}),R.jsxs("span",{className:"sb-item",children:["UPDATED ",h]}),R.jsx("span",{className:"sb-spacer"}),R.jsx("span",{className:"sb-item sb-muted",children:i==="offline"?"未连接数据源 · 检查网络或运行 npm run feed":n.source==="enidex-direct"?"SUBGRAPH DIRECT · graph.eni.top（浏览器直连）":"SUBGRAPH · graph.eni.top（经本地代理）"})]})]})}by.createRoot(document.getElementById("root")).render(R.jsx($k.StrictMode,{children:R.jsx(Rne,{})}));
+${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL.createObjectURL(f),h.download=`enidex-${t.pairKey}-trades.csv`,h.click(),URL.revokeObjectURL(h.href)};return R.jsxs(Ss,{index:"06",title:"实时成交",subtitle:`REAL-TIME TRADES · ${t.base} → ${t.quote} · 逐笔`,className:"q7",right:R.jsxs("div",{className:"tr-tools",children:[Pne.map(c=>R.jsx("button",{type:"button",className:`tr-chip ${e===c.key?"is-on":""}`,onClick:()=>r(c.key),children:c.label},c.key)),R.jsx("button",{type:"button",className:"tr-csv",onClick:u,children:"导出 CSV"})]}),children:[R.jsxs("div",{className:"tr-cols",children:[R.jsx("span",{children:"时间"}),R.jsx("span",{children:"方向"}),R.jsxs("span",{children:["价格（",t.quote,"）"]}),R.jsxs("span",{children:["数量（",t.base,"）"]}),R.jsxs("span",{children:["金额（",t.quote,"）"]}),R.jsx("span",{children:"交易者"})]}),R.jsxs("div",{className:"tr-body",children:[s.length===0&&R.jsx("div",{className:"tr-empty",children:"当前筛选条件下暂无成交"}),s.map(c=>R.jsxs("div",{className:`tr-row ${c.side==="buy"?"is-buy":"is-sell"} ${c.id===n?"is-flash":""}`,children:[R.jsx("span",{className:"tr-time",children:c.t}),R.jsx("span",{className:"tr-side",children:c.side==="buy"?"买":"卖"}),R.jsx("span",{className:"tr-price",children:Be(c.price,t.decimals)}),R.jsx("span",{className:"tr-size",children:kv(c.size)}),R.jsx("span",{className:"tr-amt",children:_r(c.quote??c.price*c.size)}),R.jsx("span",{className:"tr-trader",children:c.trader||"—"})]},c.id))]}),R.jsxs("div",{className:"chart-foot",children:[R.jsxs("span",{children:[o.length," 笔 · 显示 ",s.length," · 主动买 ",o.length?(l/o.length*100).toFixed(0):0,"%"]}),R.jsx("span",{className:"tr-live",children:"LIVE 1s"})]})]})}function Ene({snap:t}){var l;const e=t.overview,r=t.decimals,n=((l=t.bookStats)==null?void 0:l.spreadBps)??0,i=[{label:"24H 最高",value:Be(t.high24,r)},{label:"24H 最低",value:Be(t.low24,r)},{label:"24H 成交量",value:`${_r(t.vol24)} ${t.base}`},{label:"24H 成交额",value:`${_r(t.quoteVol24)} ${t.quote}`},{label:"24H 开盘",value:Be(t.open24,r)},{label:"当前价差",value:`${n.toFixed(0)} bps`},{label:"24H 成交笔数",value:e?`${e.tradeCount}${e.capped?"+":""}`:"—"},{label:"24H 活跃地址",value:e?`${e.users}`:"—"},{label:"24H 均价",value:Be((e==null?void 0:e.avgPrice24)??t.price,r)},{label:"24H 涨跌",value:`${t.change24h>=0?"+":""}${t.change24h.toFixed(2)}%`,tone:t.change24h>=0?"up":"down"}],a=(e==null?void 0:e.buy60)??0,o=(e==null?void 0:e.sell60)??0,s=(e==null?void 0:e.net60)??0;return R.jsxs(Ss,{index:"07",title:"24 小时概览",subtitle:"24H OVERVIEW · 子图 1H K 线汇总",className:"q8",right:R.jsx("span",{className:"st-tag",children:"SNAPSHOT · 1s"}),children:[R.jsx("div",{className:"st-grid",children:i.map(u=>R.jsxs("div",{className:"st-cell",children:[R.jsx("span",{className:"st-label",children:u.label}),R.jsx("span",{className:`st-value ${u.tone?`is-${u.tone}`:""}`,children:u.value})]},u.label))}),R.jsxs("div",{className:"st-window",children:[R.jsxs("div",{className:"st-w-cell",children:[R.jsx("span",{className:"st-label",children:"窗口主动买 · 60m"}),R.jsx("span",{className:"st-value is-up",children:_r(a)})]}),R.jsxs("div",{className:"st-w-cell",children:[R.jsx("span",{className:"st-label",children:"窗口主动卖 · 60m"}),R.jsx("span",{className:"st-value is-down",children:_r(o)})]}),R.jsxs("div",{className:"st-w-cell",children:[R.jsx("span",{className:"st-label",children:"净额"}),R.jsxs("span",{className:`st-value ${s>=0?"is-up":"is-down"}`,children:[s>=0?"+":"−",_r(Math.abs(s))]})]})]}),R.jsxs("div",{className:"chart-foot",children:[R.jsx("span",{children:"1H × 24 根 K 线汇总 · 笔数/地址来自近 24h 逐笔（3 分钟缓存）"}),R.jsxs("span",{className:"st-mid",children:["MID ",Be(t.price,r)]})]})]})}function Rne(){return R.jsx(Nne,{})}function Nne(){const t=new URLSearchParams(window.location.search).get("pair")||"",[e,r]=be.useState(C5.includes(t)?t:"EVBC_USDT"),{snap:n,link:i,hits:a,retry:o}=jC(e),s=n.asks.slice(0,7),l=n.bids.slice(0,7),u=Math.max(1e-9,...s.map(m=>m.size),...l.map(m=>m.size)),c=A5(s,u),v=A5(l,u),f=n.change24h>=0,h=new Date(n.updatedAt).toLocaleTimeString("en-GB",{hour12:!1}),d=n.ticks[n.ticks.length-1],p=d&&Number.isFinite(d.ts)?Math.max(0,Math.floor(Date.now()/1e3-d.ts)):null,g=p===null?"--":p<60?`${p}s`:`${Math.floor(p/60)}m`,y=p!==null&&p>120;return R.jsxs("div",{className:"shell",children:[R.jsx("div",{className:"bg-layer bg-glow"}),R.jsx("div",{className:"bg-layer bg-grid"}),R.jsx("div",{className:"bg-layer scanlines"}),R.jsx("div",{className:"bg-layer vignette"}),R.jsx(DN,{snap:n,link:i,pairs:C5,activePair:e,onPair:r,onRetry:o,hits:a}),R.jsx("main",{className:"grid grid-top grid-solo",children:R.jsx(Ss,{index:"01",title:"高频 TICK 分时",subtitle:"HIGH-FREQUENCY TICK · 真实逐笔",className:"q1",right:R.jsxs("div",{className:"q1-meta",children:[R.jsxs("span",{className:`mini-change ${f?"up":"down"}`,children:[f?"+":"",n.change24h.toFixed(2),"%"]}),R.jsxs("span",{className:`meta-tag meta-live ${y?"is-quiet":""}`,children:["最后成交 ",g," 前"]}),R.jsxs("span",{className:"meta-tag",children:[n.pair," · 24H"]})]}),children:R.jsx(xne,{ticks:n.ticks,price:n.price,high:n.high24,low:n.low24,open24:n.open24,change24h:n.change24h,decimals:n.decimals,pair:n.pair,vol24:n.vol24,base:n.base})})}),R.jsxs("section",{className:"sub-grid",children:[R.jsx(Lne,{pairKey:e,pair:n.pair,decimals:n.decimals,base:n.base,quote:n.quote}),R.jsx(bne,{candles:n.klines,snap:n})]}),R.jsxs("section",{className:"sub-grid sub-grid-1",children:[R.jsx(wne,{asks:c,bids:v,trades:n.trades,price:n.price,decimals:n.decimals,base:n.base,imbalance:n.bookImbalance}),R.jsx(Ine,{snap:n})]}),R.jsxs("section",{className:"sub-grid sub-grid-2",children:[R.jsx(kne,{snap:n}),R.jsx(Ene,{snap:n})]}),R.jsxs("footer",{className:"statusbar",children:[R.jsxs("span",{className:"sb-item",children:[R.jsx("i",{className:"sb-dot",style:{background:i==="live"?"#3ee0b0":i==="offline"?"#ff5c7a":"#f2c14e"}}),"FEED ",i==="live"?"LIVE":i==="stale"?"STALE":i==="booting"?"SYNC":"OFFLINE"]}),R.jsxs("span",{className:"sb-item",children:[n.source==="enidex-direct"?"直连 ENIDEX 子图":"本地代理 8118"," · POLL 1s · ",a," 次"]}),R.jsxs("span",{className:"sb-item",children:["LATENCY ",n.latencyMs,"ms"]}),R.jsxs("span",{className:"sb-item",children:["UPDATED ",h]}),R.jsx("span",{className:"sb-spacer"}),R.jsx("span",{className:"sb-item sb-muted",children:i==="offline"?"未连接数据源 · 检查网络或运行 npm run feed":n.source==="enidex-direct"?"SUBGRAPH DIRECT · graph.eni.top（浏览器直连）":"SUBGRAPH · graph.eni.top（经本地代理）"})]})]})}by.createRoot(document.getElementById("root")).render(R.jsx($k.StrictMode,{children:R.jsx(Rne,{})}));
 
 </script>
     <style>
@@ -318,7 +316,22 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   .edx-fr input{flex:1;min-width:0;background:#ffffff08;border:1px solid rgba(255,255,255,.12);border-radius:2px;padding:6px 7px;color:#e6edf7;font-family:inherit;font-size:11px;outline:none}
   .edx-fr em{font-style:normal;font-size:8px;color:#66718a;width:30px;flex:none}
 }
-</style><style>
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
 /* edx-holders-v1 */
 @media (max-width: 900px) {
   .edx-hrow { display: flex; align-items: center; gap: 8px; padding: 7px 11px; border-top: 1px dashed rgba(242, 193, 78, 0.12); }
@@ -333,7 +346,71 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   #edx-h-flt button { font-size: 9px; padding: 6px 9px; }
   #edx-h-toks button { font-size: 10px; padding: 7px 0; }
   #edx-h-addr { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 8.5px; color: #8b96ad; }
+
+  /* 持币排行：列表区独立上下滑动 */
+  #edx-h-list {
+    max-height: clamp(200px, calc(100vh - 540px), 40vh);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding-right: 2px;
+  }
+  #edx-h-list::-webkit-scrollbar { width: 3px; }
+  #edx-h-list::-webkit-scrollbar-thumb { background: rgba(242, 193, 78, 0.35); border-radius: 2px; }
+  #edx-h-list::-webkit-scrollbar-track { background: transparent; }
+
+
+
+  /* 顶栏卡片：实时价改用与主页大价格同款的金色数码字 */
+  .mb-pairs .mb-quote {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: var(--gold-soft, #f2c14e);
+    text-shadow: 0 0 14px rgba(242, 193, 78, 0.42);
+    font-variant-numeric: tabular-nums;
+  }
+  /* 顶栏：移除中间大价格卡，两张币种卡横排填满 */
+  .brand-row .mb-last { display: none; }
+  .brand .mb-pairs { width: auto; max-width: none; flex: 1 1 auto; flex-direction: row; align-items: stretch; gap: 6px; }
+  .brand .mb-pairs .mb-card { flex: 1 1 0; min-width: 0; justify-content: flex-start; padding: 5px 16px 5px 10px; flex-wrap: wrap; row-gap: 0; }
+  .mb-pairs .mb-pct { flex-basis: auto; margin-left: auto; padding-left: 6px; }
+  /* 顶栏右侧三个状态标签整体缩小（第二档） */
+  .top-right .pill { font-size: 4.5px; padding: 0.5px 4px; gap: 2px; letter-spacing: .1em; }
+  .top-right .pill .pill-rate { font-size: 4.5px; margin-left: 1px; }
+  .top-right .pill .pulse-dot { width: 2.5px; height: 2.5px; box-shadow: 0 0 4px #5ef2d0e6; }
+  .top-right .status-stack { gap: 3px; }
+  /* 阶梯挂单 */
+  .edx-l-form { display: flex; flex-wrap: wrap; gap: 8px 10px; margin-top: 8px; }
+  .edx-l-form label { flex: 1 1 45%; min-width: 0; font-size: 8.5px; letter-spacing: .06em; color: #8b96ad; }
+  .edx-l-form input { display: block; width: 100%; box-sizing: border-box; margin-top: 3px; padding: 5px 7px;
+    font-family: inherit; font-size: 11px; color: #eef2f7; background: #0b1017;
+    border: 1px solid rgba(255,255,255,.12); border-radius: 3px; font-variant-numeric: tabular-nums; }
+  .edx-l-form input:focus { outline: none; border-color: rgba(242,193,78,.6); }
+  .edx-l-form input[readonly] { color: #f2c14e; background: rgba(242,193,78,.05);
+    border-color: rgba(242,193,78,.28); font-family: var(--font-display); font-size: 11.5px; }
+  #edx-l-sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 9px; padding-right: 18px; }
+  #edx-l-sum div { min-width: 0; }
+  #edx-l-sum .k { display: block; font-size: 8px; letter-spacing: .08em; color: #8b96ad; }
+  #edx-l-sum .v { display: block; margin-top: 2px; font-family: var(--font-display); font-size: 10.5px;
+    font-weight: 700; color: #f2c14e; font-variant-numeric: tabular-nums; }
+  #edx-l-sum .v.dn { color: #ff5c7a; }
+  #edx-l-list { margin-top: 6px; max-height: clamp(190px, calc(100vh - 520px), 40vh); overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; padding-right: 18px; }
+  #edx-l-list::-webkit-scrollbar { width: 3px; }
+  #edx-l-list::-webkit-scrollbar-thumb { background: rgba(242,193,78,.35); border-radius: 2px; }
+  .edx-lrow { padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,.08); }
+  .edx-lrow .r1 { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+  .edx-lrow .r1 .n { flex: 0 0 auto; min-width: 15px; font-size: 9px; color: #6f7b8d; }
+  .edx-lrow .r1 .pct { flex: 0 0 auto; font-size: 10px; font-weight: 700; color: #f2c14e; }
+  .edx-lrow .r1 .px { margin-left: auto; flex: 0 0 auto; white-space: nowrap; font-family: var(--font-display);
+    font-size: 12px; line-height: 1.3; color: #eef2f7; font-variant-numeric: tabular-nums; }
+  .edx-lrow .r2 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 3px; font-size: 10px; color: #eef2f7; font-variant-numeric: tabular-nums; }
+  .edx-lrow .r2 > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+
 </style>
 </head>
   <body>
@@ -408,6 +485,47 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
 (function(){
   if (window.innerWidth > 900) return;
   if (document.getElementById('edx-dock')) return;
+  // ---- 开机动画 ----
+  (function(){
+    try{
+      var css = '@keyframes edxBScan{0%{top:-14%}100%{top:112%}}'
+        + '@keyframes edxBBar{0%{width:0%}100%{width:100%}}'
+        + '@keyframes edxBUp{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:none}}'
+        + '@keyframes edxBGlow{0%,100%{opacity:.28}50%{opacity:.55}}';
+      var st = document.createElement('style');
+      st.textContent = css;
+      document.head.appendChild(st);
+      var ov = document.createElement('div');
+      ov.id = 'edx-boot';
+      ov.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;overflow:hidden;'
+        + 'background:radial-gradient(circle at 50% 44%,#0d1522 0%,#06090f 58%,#04060b 100%);'
+        + 'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+        + 'transition:opacity .45s ease;';
+      ov.innerHTML = [
+        '<div style="position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(232,200,106,.9),transparent);animation:edxBScan 2.42s linear forwards"></div>',
+        '<div style="position:absolute;top:15%;font:400 9px/1 Consolas,monospace;letter-spacing:.34em;color:#6C7A93">SYSTEM // ALPHA-7 · QUANT DESK</div>',
+        '<div style="position:absolute;left:50%;top:44%;width:210px;height:210px;margin:-105px 0 0 -105px;border:1px solid rgba(232,200,106,.18);border-radius:50%;animation:edxBGlow 2.4s ease-in-out infinite"></div>',
+        '<div style="animation:edxBUp .58s ease both">',
+          '<div style="font:800 44px/1 Consolas,monospace;letter-spacing:.01em;color:#E8C86A;text-shadow:0 0 20px rgba(232,200,106,.38)">ENITools</div>',
+        '</div>',
+        '<div style="margin-top:14px;width:42px;height:1px;background:rgba(232,200,106,.55);animation:edxBUp .58s .08s ease both"></div>',
+        '<div style="margin-top:11px;font:400 9px/1 Consolas,monospace;letter-spacing:.24em;color:#8B93A7;animation:edxBUp .58s .14s ease both">BOOT SEQUENCE</div>',
+        '<div style="position:absolute;bottom:17%;width:56%;max-width:270px">',
+          '<div style="height:2px;background:rgba(232,200,106,.14);border-radius:2px;overflow:hidden">',
+            '<div style="height:2px;width:0;background:linear-gradient(90deg,#8B6F2E,#E8C86A);animation:edxBBar 2.42s ease-out forwards"></div>',
+          '</div>',
+          '<div style="margin-top:9px;display:flex;justify-content:space-between;font:400 8px/1 Consolas,monospace;letter-spacing:.16em;color:#6C7A93">',
+            '<span>CHAIN 263</span><span>ENI / EVBC</span>',
+          '</div>',
+        '</div>'
+      ].join('');
+      document.body.appendChild(ov);
+      setTimeout(function(){
+        ov.style.opacity = '0';
+        setTimeout(function(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }, 450);
+      }, 2560);
+    }catch(e){}
+  })();
   var $ = function(s){ return document.querySelector(s); };
   var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
   var shell = null, tries = 0;
@@ -434,6 +552,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     signal: 'M3 17l4-6 3 4 4-9 3 11 3-5h3',
     best: 'M12 2.5l5.5 8.5-5.5 11-5.5-11z',
     risk: 'M12 3l8 3v6c0 5-3.6 8-8 9-4.4-1-8-4-8-9V6z',
+    explore: 'M19 11a8 8 0 1 0-16 0 8 8 0 1 0 16 0M21 21L16.65 16.65',
     conf: 'M12 3v18M4 8h16M4 16h16'
   };
 
@@ -441,8 +560,8 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   dock.id = 'edx-dock';
   dock.innerHTML =
     '<div id="edx-tabs">' +
-      tabBtn('home','首页',ICON.home) + tabBtn('holders','持币人',ICON.holders) + tabBtn('signal','信号引擎',ICON.signal) +
-      tabBtn('best','最佳持币',ICON.best) + tabBtn('conf','设置',ICON.conf) +
+      tabBtn('home','首页',ICON.home) + tabBtn('holders','持币人',ICON.holders) + tabBtn('signal','阶梯挂单',ICON.signal) +
+      tabBtn('best','最佳操作',ICON.best) + tabBtn('explore','更多',ICON.conf) +
     '</div>';
   function tabBtn(id, label, path){
     return '<div class="tb' + (id === 'home' ? ' on' : '') + '" data-tab="' + id + '">' +
@@ -458,7 +577,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     pane('holders', '持币人', 'ON-CHAIN',
       '<div class="edx-card"><div class="ct"><b>选择代币</b><i id="edx-h-live">链上快照</i></div>' +
         '<div class="edx-side" id="edx-h-toks">' +
-          '<button class="on" data-tok="eni">ENI</button><button data-tok="evbc">EVBC</button>' +
+          '<button data-tok="eni">ENI</button><button class="on" data-tok="evbc">EVBC</button>' +
         '</div>' +
         '<div class="edx-note" style="margin:7px 0 0" id="edx-h-addr">--</div>' +
       '</div>' +
@@ -478,30 +597,31 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
       '</div>' +
       '<div class="edx-note" id="edx-h-doc">ENI 为 ENI 链（chain 263）原生币，取 scan.eni.top 的原生余额降序接口；EVBC 为同链 ERC-20，取其持有人接口；均按余额从多到少、只取前 100 名，每 15 秒刷新，未做估算或补值。</div>'
     ) +
-    pane('signal', '信号引擎', 'LIVE', '') +
+    pane('signal', '阶梯挂单', 'LADDER',
+      '<div class="edx-card"><div class="ct"><b>参数</b><i id="edx-l-live">实时价</i></div>' +
+        '<div class="edx-side" id="edx-l-toks">' +
+          '<button data-ltok="eni">ENI</button><button class="on" data-ltok="evbc">EVBC</button>' +
+        '</div>' +
+        '<div class="edx-l-form">' +
+          '<label>买入价 · USDT<input id="edx-l-buy" inputmode="decimal"></label>' +
+          '<label>卖单价格 · USDT<input id="edx-l-sell" readonly></label>' +
+          '<label>档数<input id="edx-l-n" inputmode="numeric"></label>' +
+        '</div>' +
+        '<div class="edx-note" id="edx-l-feeinfo" style="margin-top:7px">--</div>' +
+      '</div>' +
+      '<div class="edx-card"><div class="ct"><b>档位明细</b><i id="edx-l-cnt">--</i></div>' +
+        '<div id="edx-l-sum"></div>' +
+        '<div id="edx-l-list"></div>' +
+        '<div class="edx-note" style="margin-top:7px">口径：每档挂单价 = 买价×(1+该档加价比例)；每行四列为买入价 / 该档卖出价 / 单位差价 / 该档加价比例；汇总四格对应卖单价格那一档；ENI 首档 +1%，EVBC 首档 +10%，两币每档 +1%；赚取差价为扣费后净值（ENI 买 0.2%/卖 0.2%，EVBC 买 2%、卖单费每周二下调 1%）。</div>' +
+      '</div>'
+    ) +
     pane('best', 'EVBC 最佳持币数量', '', '') +
-    pane('conf', '设置', 'SYS', '');
+    pane('explore', '区块链浏览器', 'SCAN · 263', '') +
+    pane('conf', '更多', 'SYS', '');
   function pane(id, title, tag, body){
     return '<div class="pane" data-tab="' + id + '"><div class="hd"><b>' + title + '</b>' + (tag ? '<span>' + tag + '</span>' : '') + '</div>' + body + '</div>';
   }
   shell.appendChild(panes);
-
-  // 信号引擎结构
-  var sig = panes.querySelector('.pane[data-tab="signal"]');
-  sig.insertAdjacentHTML('beforeend',
-    '<div class="edx-card"><div class="edx-sig">' +
-      '<div class="edx-ring"><i id="edx-ring-arc"></i><b id="edx-score">--</b></div>' +
-      '<div class="dir" id="edx-dir"><b id="edx-dir-txt">--</b><span id="edx-dir-sub">因子等待中</span></div>' +
-    '</div><div class="edx-fac" id="edx-facs"></div></div>' +
-    '<div class="edx-card"><div class="ct"><b>读数依据</b><i id="edx-sig-src">页面实时数据</i></div>' +
-      '<div class="edx-kv">' +
-        '<div><span class="k">MA5 / MA10 / MA30</span><span class="v" id="edx-ma">--</span></div>' +
-        '<div><span class="k">24H 涨跌</span><span class="v" id="edx-chg">--</span></div>' +
-        '<div><span class="k">主动买占比</span><span class="v" id="edx-actbuy">--</span></div>' +
-        '<div><span class="k">买盘占比</span><span class="v" id="edx-depth">--</span></div>' +
-      '</div></div>' +
-    '<div class="edx-note">四个因子：趋势排列（MA5/10/30）、主动成交方向、盘口失衡、24H 波动。综合分由这四项加权得出，置信度＝同向因子占比。</div>'
-  );
 
   // 风控
   panes.querySelector('.pane[data-tab="best"]').insertAdjacentHTML('beforeend',
@@ -562,7 +682,92 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   );
 
   // 设置
-  panes.querySelector('.pane[data-tab="conf"]').insertAdjacentHTML('beforeend',
+  // 最佳持币 · 内部页签（最佳持币 / 团队规划）
+  var bPane = panes.querySelector('.pane[data-tab="best"]');
+  var bHd = bPane.querySelector('.hd');
+  var bMove = [];
+  for (var bi = 0; bi < bPane.children.length; bi++){
+    var bc = bPane.children[bi];
+    if (bc !== bHd) bMove.push(bc);
+  }
+  var bWrapBest = document.createElement('div');
+  var bWrapTeam = document.createElement('div');
+  for (var bj = 0; bj < bMove.length; bj++){ bWrapBest.appendChild(bMove[bj]); }
+  bWrapTeam.style.display = 'none';
+  bWrapTeam.insertAdjacentHTML('beforeend',
+    '<div class="edx-card" style="border-color:rgba(232,200,106,.55)">' +
+      '<div class="ct"><b>团队总览</b><i id="edx-t-tag">本地试算</i></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 8px;margin:0 0 10px">' +
+        '<div>' +
+          '<span style="display:block;font-size:8px;letter-spacing:.06em;color:#66718a">团队总持币</span>' +
+          '<span style="display:block;font-size:20px;line-height:1.2;color:#e8c86a;margin-top:4px;letter-spacing:0" id="edx-t-total">--</span>' +
+        '</div>' +
+        '<div>' +
+          '<span style="display:block;font-size:8px;letter-spacing:.06em;color:#66718a">团队总算力</span>' +
+          '<span style="display:block;font-size:20px;line-height:1.2;color:#e8c86a;margin-top:4px;letter-spacing:0" id="edx-t-c">--</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="edx-kv">' +
+        '<div><span class="k">每枚算力</span><span class="v" id="edx-t-eff">--</span></div>' +
+        '<div><span class="k">最大分支</span><span class="v" id="edx-t-max">--</span></div>' +
+      '</div>' +
+      '<div class="edx-note" id="edx-t-hint" style="margin:9px 0 0">--</div>' +
+    '</div>' +
+    '<div class="edx-card"><div class="ct"><b>分支结构</b><i id="edx-t-tree-n">直属分支</i></div>' +
+      '<div id="edx-t-tree" style="margin:2px 0 0"></div>' +
+      '<div class="edx-note" style="margin:8px 0 0">方块为该支整条线上合计持币；红框那条是最大分支，只计 ∛，不叠 10 倍。</div>' +
+      '<div style="margin-top:11px;padding-top:10px;border-top:1px solid rgba(232,200,106,.18)">' +
+        '<div style="display:flex;align-items:baseline;justify-content:space-between;margin:0 0 2px">' +
+          '<b style="font-size:9px;letter-spacing:.06em;color:#8b93a7">单支层级示意</b>' +
+          '<i style="font-size:8px;color:#66718a;letter-spacing:.04em">200 ×4 ＋ 1,000 ×9 ＝ 3,800</i>' +
+        '</div>' +
+        '<div id="edx-t-tree2"></div>' +
+        '<div class="edx-note" style="margin:6px 0 0">示意：一条分支内 1 人 200 起，3 叉复制到 9 人，末层每人 1,000，合计 3,800 —— 仍在 1 万红线内，整支按 10 倍折算。</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="edx-card" style="border-color:rgba(232,200,106,.55)">' +
+      '<div class="ct"><b>团队分支</b><i>单支 ≤ 10,000</i></div>' +
+      '<div id="edx-t-head" style="display:grid;grid-template-columns:minmax(0,1fr) 82px 92px;gap:6px;font-size:9px;color:#66718a;letter-spacing:.06em;margin:0 0 2px">' +
+        '<span>分支</span><span style="text-align:right">持币 EVBC</span><span style="text-align:right">折算算力</span>' +
+      '</div>' +
+      '<div id="edx-t-list"></div>' +
+      '<div class="edx-side" style="margin-top:9px;display:flex;gap:6px">' +
+        '<button id="edx-t-add" style="flex:1">＋ 加一条分支</button>' +
+        '<button id="edx-t-del" style="flex:1">－ 删最后一条</button>' +
+      '</div>' +
+      '<div class="edx-note" style="margin:8px 0 0">分支 = 你的直属下线，填该支整条线上合计持币；低于 100 EVBC 的地址不计入。</div>' +
+    '</div>' +
+    '<div class="edx-card"><div class="ct"><b>怎么排最划算</b><i>官方公式</i></div>' +
+      '<div class="edx-note" style="margin:0 0 6px">C = ∛P最大 + Σ其余［10×min(P,10,000) + max(P−10,000,0)］</div>' +
+      '<div class="edx-note" style="margin:0 0 4px">· 单支吃满 1 万按 10 倍；超出 1 万的部分只按 1 倍，等于掉 10 倍。</div>' +
+      '<div class="edx-note" style="margin:0 0 4px">· 新开一条满 1 万分支 ≈ +100,000；给已满分支加 1 万只 +10,000。</div>' +
+      '<div class="edx-note" style="margin:0 0 4px">· 最大那支只计 ∛：1 万→2 万只从 21.5 涨到 27.1，各支尽量等粗。</div>' +
+      '<div class="edx-note" style="margin:7px 0 0">纯本机试算，不联网、不上传；不构成收益承诺。</div>' +
+    '</div>'
+  );
+  var bTabsEl = document.createElement('div');
+  bTabsEl.className = 'edx-side';
+  bTabsEl.id = 'edx-b-tabs';
+  bTabsEl.style.margin = '0 0 9px';
+  bTabsEl.innerHTML = '<button class="on" data-bsub="best">最佳持币</button><button data-bsub="team">团队规划</button>';
+  bPane.appendChild(bTabsEl);
+  bPane.appendChild(bWrapBest);
+  bPane.appendChild(bWrapTeam);
+
+  var cfgPane = panes.querySelector('.pane[data-tab="conf"]');
+  var cfgHd = cfgPane.querySelector('.hd');
+  var cfgTitleB = cfgHd.querySelector('b');
+  if (cfgTitleB) cfgTitleB.textContent = '设置';
+  cfgHd.insertAdjacentHTML('afterend',
+    '<div class="edx-side" id="edx-cfg-tabs" style="margin:0 0 9px"><button class="on" data-sub="explore">区块链浏览器</button><button data-sub="conf">设置</button></div>' +
+    '<div id="edx-cfg-body"></div>'
+  );
+  var cfgBody = $('#edx-cfg-body');
+  cfgBody.insertAdjacentHTML('beforeend',
+    '<div class="edx-card" style="border-left-color:rgba(242,193,78,.6)"><div class="ct"><b>区块链浏览器</b><i>scan.eni.top</i></div>' +
+      '<div class="edx-note" style="margin:0 0 8px">可查地址余额（含 EVBC）、某地址的交易、某地址或某笔交易的代币转移、区块内交易；只读查询，不含签名与转账。</div>' +
+      '<div class="edx-side"><button id="edx-cfg-x-open">打开区块链浏览器</button></div>' +
+    '</div>' +
     '<div class="edx-card"><div class="ct"><b>持币人数据源</b><i>区块浏览器</i></div>' +
       '<div class="edx-kv">' +
         '<div><span class="k">ENI 浏览器</span><span class="v" style="font-size:9px">scan.eni.top · 263</span></div>' +
@@ -577,7 +782,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     '</div>' +
     '<div class="edx-card"><div class="ct"><b>行情源</b><i>ENIDEX</i></div>' +
       '<div class="edx-note" style="margin:0">首页面板数据来自 ENIDEX 子图（ENI Chain），1 秒轮询；本机未配置代理时走直连通道。</div></div>' +
-    '<div class="edx-note">ENITools · 安卓版 v1.1 · 含链上持币人查询，不含交易功能。</div>'
+    '<div class="edx-note">ENITools · 安卓版 v1.2 · 含链上持币人查询与区块链浏览器，不含交易功能。</div>'
   );
 
   // ---- 公共格式化 ----
@@ -606,7 +811,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   var STATS_API = 'https://scan.eni.top/api/v2/stats';
   var CACHE_MS = 15000;
   var TOP_N = 100;
-  var H = { tok: 'eni', rows: [], next: null, filter: 'all', meta: null, ts: 0, busy: false, err: '', calls: 0 };
+  var H = { tok: 'evbc', rows: [], next: null, filter: 'all', meta: null, ts: 0, busy: false, err: '', calls: 0 };
 
   function fetchJSON(url, timeout){
     return new Promise(function(resolve, reject){
@@ -791,8 +996,8 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     }
     $('#edx-h-n').textContent = rowsAll.length ? '前 ' + rowsAll.length + ' 名' : '-- 名';
     $('#edx-h-foot').textContent = isNative
-      ? '按原生 ENI 余额降序，只展示前 100 名；行内占比 = 占前 100 名合计的比例。'
-      : '按余额从多到少排序，只展示前 100 名。';
+      ? '按原生 ENI 余额降序，只展示前 100 名，列表区可上下滑动查看。'
+      : '按余额从多到少排序，只展示前 100 名，列表区可上下滑动查看。';
   }
 
   function setTok(tok){
@@ -811,6 +1016,206 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     var b = e.target.closest ? e.target.closest('button[data-tok]') : null;
     if (!b) return;
     setTok(b.getAttribute('data-tok'));
+  });
+
+  // ---- 顶栏标题改名 ENITools ----
+  function brandTitle(){
+    var t = document.querySelector('.brand-title');
+    if (t && t.textContent !== 'ENITools') t.textContent = 'ENITools';
+  }
+  brandTitle();
+  setInterval(brandTitle, 1000);
+
+  // ---- 顶栏卡片：/USDT 改为实时价格（graph.eni.top 最新成交价，单位 1e18）----
+  var BRAND_PAIR = {
+    ENI:  '0x6ada4a104bde43362e4caa47229870e8364175d0',
+    EVBC: '0xc7182f3e2e030cf83d627be9fa3bfdb6fd04ce04'
+  };
+  var BRAND_PRICE = { ENI: null, EVBC: null };
+  var BRAND_API = 'https://graph.eni.top/subgraphs/name/orderbook-dex';
+
+  function brandBody(){
+    return JSON.stringify({ query: '{ a: matches(first: 1, orderBy: timestamp, orderDirection: desc, where: {pairAddress: "' +
+      BRAND_PAIR.ENI + '"}) { price } b: matches(first: 1, orderBy: timestamp, orderDirection: desc, where: {pairAddress: "' +
+      BRAND_PAIR.EVBC + '"}) { price } }' });
+  }
+  function brandParse(v){
+    if (v == null || v === '') return null;
+    var n;
+    try { n = Number(BigInt(String(v))); } catch(e){ n = Number(v); }
+    if (!isFinite(n)) return null;
+    return n / 1e18;
+  }
+  function brandFmt(n){
+    if (n == null) return '';
+    return n >= 1 ? '$' + n.toFixed(2) : '$' + n.toFixed(4);
+  }
+  function brandPaint(){
+    $$('.mb-pairs .mb-card').forEach(function(card){
+      var baseEl = card.querySelector('.mb-base');
+      var qEl = card.querySelector('.mb-quote');
+      if (!baseEl || !qEl) return;
+      var base = (baseEl.textContent || '').replace(/\s+/g, '');
+      var txt = brandFmt(BRAND_PRICE[base]);
+      if (!txt) return;
+      if (qEl.textContent !== txt) qEl.textContent = txt;
+      // 价格颜色跟随涨跌：涨绿、跌红、平金
+      var pctEl = card.querySelector('.mb-pct');
+      var dir = '';
+      if (pctEl) {
+        if (pctEl.classList.contains('up')) dir = 'up';
+        else if (pctEl.classList.contains('down')) dir = 'down';
+      }
+      qEl.style.color = dir === 'up' ? '#3ee0b0' : (dir === 'down' ? '#ff5c7a' : '#f2c14e');
+      qEl.style.textShadow = dir === 'up' ? '0 0 14px rgba(62,224,176,.45)'
+        : (dir === 'down' ? '0 0 14px rgba(255,92,122,.5)'
+        : '0 0 14px rgba(242,193,78,.42)');
+    });
+  }
+  function brandLoad(){
+    fetch(BRAND_API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: brandBody() })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var d = j && j.data;
+        if (!d) return;
+        var a = brandParse(d.a && d.a[0] && d.a[0].price);
+        var b = brandParse(d.b && d.b[0] && d.b[0].price);
+        if (a != null) BRAND_PRICE.ENI = a;
+        if (b != null) BRAND_PRICE.EVBC = b;
+        brandPaint();
+      })
+      .catch(function(){ /* 失败就保留上一次价格，不猜值 */ });
+  }
+  brandLoad();
+  setInterval(brandLoad, 3000);
+  setInterval(brandPaint, 600);
+
+  // ---- 阶梯挂单：买 × (1+溢价) = 卖 ----
+  var LD = {
+    tok: 'evbc',
+    ready: false,
+    def: {
+      eni:  { buy: 28.68,  qty: 100,  fee: 0.2, start: 1,   step: 1, n: 10, fin: 0.2, fout: 0.2, sk: 0 },
+      evbc: { buy: 0.1356, qty: 1000, fee: 0.2, start: 10,  step: 1, n: 10, fin: 2, fout: 8, sk: 1 }
+    }
+  };
+  // EVBC 卖单手续费：每周二 0 点下调 1%，下限 2%；按本机日期计算，无需联网
+  var EF = { base: new Date(2026, 10, 17, 0, 0, 0), from: 8, min: 2, every: 7 * 86400000 };
+  function evbcFoutAt(t){
+    if (t < EF.base) return EF.from;
+    var wk = Math.floor((t - EF.base) / EF.every);
+    return Math.max(EF.min, EF.from - (wk + 1));
+  }
+  function evbcFeeText(now){
+    var cur = evbcFoutAt(now);
+    var body = 'EVBC 卖单手续费 ' + cur + '%（每周二 -1%，最低 ' + EF.min + '%）';
+    if (cur > EF.min) {
+      var wk = now < EF.base ? -1 : Math.floor((now - EF.base) / EF.every);
+      var at = new Date(EF.base.getTime() + (wk + 1) * EF.every);
+      body += '；下次 ' + (at.getMonth() + 1) + '/' + at.getDate() + ' 起 ' + Math.max(EF.min, cur - 1) + '%';
+    } else {
+      body += '；已到下限，不再下调';
+    }
+    return body;
+  }
+  function lNum(id, fb){
+    var el = $(id);
+    var v = el ? parseFloat(String(el.value || '').replace(/,/g, '')) : NaN;
+    return isFinite(v) ? v : fb;
+  }
+  function lFmt(n, d){
+    if (!isFinite(n)) return '--';
+    var sign = n < 0 ? '-' : '';
+    var parts = Math.abs(n).toFixed(d == null ? 2 : d).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return sign + parts.join('.');
+  }
+  function lLive(){
+    return BRAND_PRICE[LD.tok === 'eni' ? 'ENI' : 'EVBC'];
+  }
+  function lFill(){
+    var d = LD.def[LD.tok];
+    var live = lLive();
+    if (live != null) d.buy = live;
+    var b = $('#edx-l-buy'), sEl = $('#edx-l-sell'), n = $('#edx-l-n');
+    if (b) b.value = String(+d.buy.toFixed(6));
+    if (sEl) sEl.value = String(+(d.buy * (1 + (d.start + (d.sk || 0) * (d.step || 0)) / 100)).toFixed(d.buy >= 10 ? 2 : 4));
+    if (n) n.value = String(d.n);
+    var lv = $('#edx-l-live');
+    if (lv) lv.textContent = live != null ? (LD.tok === 'eni' ? '实时 $' + live.toFixed(2) : '实时 $' + live.toFixed(4)) : '实时价';
+  }
+  function lRender(){
+    var list = $('#edx-l-list'), sum = $('#edx-l-sum'), cnt = $('#edx-l-cnt');
+    if (!list) return;
+    var d = LD.def[LD.tok];
+    var buy = lNum('#edx-l-buy', d.buy);
+    var n = Math.max(1, Math.min(60, Math.round(lNum('#edx-l-n', d.n))));
+    if (!(buy > 0)) {
+      list.innerHTML = '<div class="edx-note">买入价需大于 0。</div>';
+      if (sum) sum.innerHTML = '';
+      if (cnt) cnt.textContent = '--';
+      return;
+    }
+    var p0 = d.start;
+    var step = d.step != null ? d.step : (n > 1 ? (d.end - p0) / (n - 1) : 0);
+    var sell = buy * (1 + (p0 + (d.sk || 0) * step) / 100);   // 卖单价格框显示的档位
+    var sEl = $('#edx-l-sell');
+    if (sEl) sEl.value = String(+sell.toFixed(buy >= 10 ? 2 : 4));
+    var feeEl = $('#edx-l-feeinfo');
+    if (feeEl) feeEl.textContent = LD.tok === 'evbc' ? evbcFeeText(new Date()) : 'ENI 买卖手续费各 0.2%';
+    var qty = d.qty;                // 买入数量
+    var fin = (d.fin || 0) / 100;   // 买入手续费
+    var fout = (LD.tok === 'evbc' ? evbcFoutAt(new Date()) : d.fout) / 100; // 卖出手续费
+    var per = qty / n;
+    var html = '', cost = 0, net = 0, lastPct = p0;
+    for (var i = 0; i < n; i++) {
+      var pct = p0 + step * i;
+      var px = buy * (1 + pct / 100);
+      var dx = px * (1 - fout) - buy * (1 + fin);
+      var c = per * buy * (1 + fin), g = per * px * (1 - fout);
+      cost += c; net += g; lastPct = pct;
+      var dd = px >= 10 ? 2 : 4;
+      html += '<div class="edx-lrow">' +
+        '<div class="r1"><span class="n">' + (i + 1) + '</span></div>' +
+        '<div class="r2"><span>$' + lFmt(buy, dd) + '</span>' +
+        '<span>$' + lFmt(px, dd) + '</span>' +
+        '<span style="color:' + (dx >= 0 ? '#f0c45a' : '#ff5c7a') + '">' +
+        (dx < 0 ? '-$' : '+$') + lFmt(Math.abs(dx), dd) + '</span>' +
+        '<span style="color:#f2c14e">+' + (pct % 1 === 0 ? pct : pct.toFixed(1)) + '%</span></div>' +
+      '</div>';
+    }
+    list.innerHTML = html;
+    var dd0 = buy >= 10 ? 2 : 4;
+    var profit = net - cost;
+    if (sum) sum.innerHTML =
+      '<div><span class="k">买入价格</span><span class="v">$' + lFmt(buy, dd0) + '</span></div>' +
+      '<div><span class="k">卖出价格</span><span class="v">$' + lFmt(sell, dd0) + '</span></div>' +
+      '<div><span class="k">赚取差价</span><span class="v" style="color:' +
+        ((sell * (1 - fout) - buy * (1 + fin)) >= 0 ? '#f2c14e' : '#ff5c7a') + '">' +
+        ((sell * (1 - fout) - buy * (1 + fin)) < 0 ? '-$' : '$') +
+        lFmt(Math.abs(sell * (1 - fout) - buy * (1 + fin)), dd0) + '</span></div>' +
+      '<div><span class="k">加价比例</span><span class="v">+' +
+        (function(){ var q = p0 + (d.sk || 0) * step; return q % 1 === 0 ? q : q.toFixed(1); })() + '%</span></div>';
+    if (cnt) cnt.textContent = n + ' 档 · 最高 ' +
+      (lastPct >= 0 ? '+' : '') + (lastPct % 1 === 0 ? lastPct : lastPct.toFixed(1)) + '%';
+  }
+  function lEnter(){
+    if (!LD.ready) { LD.ready = true; lFill(); }
+    lRender();
+  }
+  var lToks = $('#edx-l-toks');
+  if (lToks) lToks.addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('button[data-ltok]') : null;
+    if (!b) return;
+    LD.tok = b.getAttribute('data-ltok');
+    $$('#edx-l-toks button').forEach(function(x){ x.classList.toggle('on', x === b); });
+    lFill();
+    lRender();
+  });
+  ['#edx-l-buy', '#edx-l-n'].forEach(function(id){
+    var el = $(id);
+    if (el) el.addEventListener('input', lRender);
+    if (el) el.addEventListener('change', lRender);
   });
 
   // 顶栏币种卡片与持币人页联动
@@ -892,6 +1297,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     share.dir = 'NEUTRAL'; share.conf = Math.round(50 - Math.abs(50 - score)); return share;
   }
   function renderSignal(){
+    if (!$('#edx-score')) return;
     var s = computeSignal();
     $('#edx-score').textContent = s.score.toFixed(1);
     $('#edx-ring-arc').style.setProperty('--rot', (Math.round(s.score / 100 * 360) - 90) + 'deg');
@@ -938,8 +1344,6 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   function radrFetch(name, cb){
     var urls = ['https://eni-radr.com/api/product/' + name];
     if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') urls.push('/__radr/' + name);
-    var rf = (name.indexOf('price') === 0) ? 'price' : name;
-    if (location.protocol !== 'capacitor:' && location.hostname !== 'localhost') urls.push('./radar-' + rf + '.json');
     var ui = 0, tries = 0;
     function attempt(){
       if (ui >= urls.length) { cb(null); return; }
@@ -988,44 +1392,73 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
 
   function scanBest(){
     if (B.busy) return;
-    if (B.holders && B.holders < 1000) B.total = 1;
-    if (!B.holders) B.total = 60;
-    B.busy = true; B.done = 0; B.err = '';
+    B.busy = true; B.done = 0; B.err = ''; B.miss = 0; B.pages = 0; B.left = 0; B.uniq = 0;
+    B.phase = 'main';
     B.total = B.holders ? Math.ceil(B.holders / 1000) : 60;
+    if (B.total < 1) B.total = 1;
     var api = 'https://scan.eni.top/api?module=token&action=getTokenHolders&offset=1000&contractaddress=' + EV_ADDR + '&page=';
-    var np = 1;
-    B.miss = 0; B.pages = 0;
+    var seen = {}, cnt = 0, BSORT_REF = null;
+    function addRows(arr){
+      for (var k = 0; k < arr.length; k++){
+        var a = String(arr[k].address || '').toLowerCase();
+        if (!a) continue;
+        if (!(a in seen)) cnt++;
+        seen[a] = Number(arr[k].value) / 1e18;
+      }
+      B.uniq = cnt;
+    }
+    function buildRows(){
+      BSORT = [];
+      for (var k in seen) { if (seen[k] > 0) BSORT.push(seen[k]); }
+      BSORT_REF = BSORT;
+    }
     function fetchPage(pg, t){
       return fetchJSON(api + pg).then(function(j){
         var arr = (j && j.result) || [];
-        if (!arr.length && t < 2) { B.miss++; return fetchPage(pg, t + 1); }
+        if (!arr.length) {
+          if (t < 5) { B.miss++; return fetchPage(pg, t + 1); }
+          return null;
+        }
         return arr;
       }).catch(function(){
-        if (t < 2) { B.miss++; return fetchPage(pg, t + 1); }
-        return [];
+        if (t < 5) { B.miss++; return fetchPage(pg, t + 1); }
+        return null;
       });
     }
-    function worker(){
-      return (function loop(){
-        if (np > B.total) return Promise.resolve();
-        var pg = np++;
-        return fetchPage(pg, 0).then(function(arr){
-          if (arr.length) B.pages++;
-          for (var k = 0; k < arr.length; k++) {
-            var v = Number(arr[k].value) / 1e18;
-            if (v > 0) BSORT.push(v);
-          }
-          B.done++;
-          renderBest();
-          return loop();
-        });
-      })();
+    function runPages(pgs, conc){
+      var i = 0, failed = [];
+      function worker(){
+        return (function loop(){
+          if (i >= pgs.length) return Promise.resolve();
+          var pg = pgs[i++];
+          return fetchPage(pg, 0).then(function(arr){
+            if (arr) { B.pages++; addRows(arr); }
+            else { failed.push(pg); }
+            B.done++;
+            renderBest();
+            return loop();
+          });
+        })();
+      }
+      var ws = [];
+      for (var w = 0; w < conc; w++) ws.push(worker());
+      return Promise.all(ws).then(function(){ return failed; });
     }
-    var ws = [];
-    for (var i = 0; i < 4; i++) ws.push(worker());
-    Promise.all(ws).then(function(){ computeBest(); }).catch(function(e){
+    var first = [];
+    for (var p = 1; p <= B.total; p++) first.push(p);
+    runPages(first, 3).then(function(failed){
+      if (!failed.length) return [];
+      B.phase = 'fix'; B.done = 0; B.total = failed.length;
+      return runPages(failed.slice(), 2);
+    }).then(function(left){
+      B.left = (left && left.length) ? left.length : 0;
+      buildRows();
+      computeBest();
+    }).catch(function(e){
       B.busy = false; B.err = '扫描失败';
-      renderBest();
+      B.left = B.total - B.pages;
+      buildRows();
+      computeBest();
     });
   }
 
@@ -1118,8 +1551,8 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
             : '等待扫描。')));
     $('#edx-b-bar').style.width = B.busy ? (B.total ? (B.done / B.total * 100).toFixed(1) + '%' : '0%') : (B.peakRoi ? Math.min(100, B.peakRoi * 60).toFixed(1) + '%' : '0%');
     $('#edx-b-scan').textContent = B.busy
-      ? ('扫描 ' + B.done + '/' + B.total + (B.miss ? ' · 重试' + B.miss : ''))
-      : (B.ts ? ('已扫 ' + (B.pages || B.total) + ' 页' + (B.miss ? ' · 重试' + B.miss : '')) : '扫描 0/0');
+      ? ((B.phase === 'fix' ? '补扫 ' : '扫描 ') + B.done + '/' + B.total + (B.miss ? ' · 重试' + B.miss : ''))
+      : (B.ts ? ('已扫 ' + (B.pages || 0) + ' 页' + (((!B.left) || (B.uniq && B.holders && B.uniq >= B.holders - 3)) ? ' · 全部成功' : (' · 缺' + B.left + ' 页')) + (B.miss ? ' · 重试' + B.miss : '')) : '扫描 0/0');
     $('#edx-b-elig').textContent = B.n ? B.n.toLocaleString('en-US') : '--';
     $('#edx-b-hold').textContent = B.holders ? B.holders.toLocaleString('en-US') : '--';
     $('#edx-b-crowd').textContent = B.crowdV ? B.crowdV.toFixed(2) : '--';
@@ -1171,7 +1604,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
           '<span style="width:58px;text-align:right;font-size:9px;color:#cfd6e4">' + b.c.toLocaleString('en-US') + '</span>' +
         '</div>';
       }).join('') +
-      '<div class="edx-note" style="margin:6px 0 0">合计 ' + tot.toLocaleString('en-US') + ' 个合资格地址（≥100 EVBC）。</div>';
+      '<div class="edx-note" style="margin:6px 0 0">合计 ' + tot.toLocaleString('en-US') + ' 个合资格地址（≥100 EVBC）；全量扫描去重 ' + (B.uniq || 0).toLocaleString('en-US') + ' 个持币地址。</div>';
     } else {
       $('#edx-b-dist').innerHTML = '<div class="edx-note">扫描完成后生成。</div>';
     }
@@ -1245,13 +1678,424 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     $('#edx-h-n').textContent = '-- 名';
   });
 
+  // ---- 区块链浏览器 ----
+  var XAPI = 'https://scan.eni.top/api/v2/';
+  var X = { view: '', items: [], ts: 0, busy: false, err: '', q: '', detail: null, lastAddr: '' };
+
+  var xPaneEl = panes.querySelector('.pane[data-tab="explore"]');
+  var xHdEl = xPaneEl.querySelector('.hd');
+  var xHdTitle = xHdEl.querySelector('b');
+  if (xHdTitle) xHdTitle.textContent = '区块链浏览器';
+  xHdEl.insertAdjacentHTML('afterend',
+    '<div class="edx-side" id="edx-x-tabs" style="margin:0 0 9px"><button class="on" data-sub="explore">区块链浏览器</button><button data-sub="conf">设置</button></div>'
+  );
+
+  xPaneEl.insertAdjacentHTML('beforeend',
+    '<div class="edx-card"><div class="ct"><b>链上查询</b><i>scan.eni.top</i></div>' +
+      '<div class="edx-fr"><label>输入</label><input id="edx-x-q" placeholder="地址 / 交易哈希 / 区块高度" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="edx-x-go" style="flex:none;font-family:inherit;font-size:10px;letter-spacing:.14em;padding:6px 10px;background:rgba(242,193,78,.16);border:1px solid rgba(242,193,78,.55);color:#f2c14e;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent">查询</button></div>' +
+      '<div class="edx-side" id="edx-x-quick"><button data-x="addr">地址详情</button><button class="on" data-x="txs">交易</button><button data-x="tts">代币转移</button></div>' +
+      '<div class="edx-note" id="edx-x-hint" style="margin:8px 0 0">支持 <b style="color:#e8c86a;font-weight:400">0x+40 地址</b>、<b style="color:#e8c86a;font-weight:400">0x+64 交易哈希</b>、<b style="color:#e8c86a;font-weight:400">区块高度</b>，也可直接输入 EVBC 合约地址查代币。</div>' +
+    '</div>' +
+    '<div class="edx-card"><div class="ct"><b id="edx-x-title">最新交易</b><i id="edx-x-src">实时</i></div>' +
+      '<div id="edx-x-body"><div class="edx-note" style="margin:6px 0 0">读取中…</div></div>' +
+    '</div>' +
+    '<div class="edx-note">数据取 scan.eni.top 公共 API（chain 263），余额单位 ENI / EVBC，手续费单位 ENI。本页只做只读查询，不含签名与转账能力。</div>'
+  );
+
+  function xWei(v, dec){
+    if (v == null || v === '') return null;
+    var n;
+    try { n = Number(BigInt(String(v))); }
+    catch(e){ n = Number(v); }
+    if (!isFinite(n)) return null;
+    return n / Math.pow(10, dec == null ? 18 : dec);
+  }
+  function xNum(n){
+    if (n == null || !isFinite(n)) return '--';
+    var a = Math.abs(n);
+    if (a === 0) return '0';
+    if (a >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+    if (a >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (a >= 1e3) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    if (a >= 1) return n.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+    return n.toPrecision(4);
+  }
+  function xTime(iso){
+    if (!iso) return '--';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '--';
+    var p = function(v){ return v < 10 ? '0' + v : '' + v; };
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+  function xShort(a){ return a ? (String(a).slice(0, 8) + '…' + String(a).slice(-6)) : '--'; }
+  function xGwei(v){ var n = xWei(v); return n == null ? '--' : (n / 1e9).toFixed(2) + ' Gwei'; }
+  function xBadge(s){
+    if (s === 'ok') return '<span style="font-size:9px;color:#57d6c1;border:1px solid rgba(87,214,193,.5);border-radius:3px;padding:1px 5px">成功</span>';
+    if (s === 'error') return '<span style="font-size:9px;color:#ff6b81;border:1px solid rgba(255,107,129,.5);border-radius:3px;padding:1px 5px">失败</span>';
+    return '<span style="font-size:9px;color:#66718a">--</span>';
+  }
+  function xLink(label, kind, val){
+    return '<span data-xgo="' + kind + '" data-xv="' + val + '" style="color:#e8c86a;font-size:10px;word-break:break-all">' + label + '</span>';
+  }
+  function xRow(inner){
+    return '<div style="padding:8px 0;border-top:1px solid rgba(255,255,255,.06)">' + inner + '</div>';
+  }
+  function xKV(rows){
+    return '<div class="edx-kv">' + rows.map(function(r){
+      return '<div><span class="k">' + r[0] + '</span><span class="v" style="' + (r[3] || '') + '">' + r[1] + '</span></div>';
+    }).join('') + '</div>';
+  }
+  function xSetTitle(t, src){
+    $('#edx-x-title').textContent = t;
+    $('#edx-x-src').textContent = src || '实时';
+  }
+  function xMark(k){
+    $$('#edx-x-quick button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-x') === k); });
+  }
+  function xMsg(t){
+    $('#edx-x-body').innerHTML = '<div class="edx-note" style="margin:6px 0 0">' + t + '</div>';
+  }
+  function xErr(e){
+    var m = (e && e.message) || '';
+    if (/timeout/i.test(m)) return '请求超时，稍后重试';
+    if (/http 40/i.test(m)) return '没有找到这条记录（接口返回 ' + m.replace('http ', '') + '）';
+    if (/http/i.test(m)) return '接口异常（' + m + '）';
+    return '网络请求失败';
+  }
+
+  function xLoadTxs(){
+    X.view = 'txs'; X.busy = true; xMark('txs');
+    fetchJSON(XAPI + 'transactions').then(function(o){
+      X.items = (o && o.items) || []; X.ts = Date.now(); X.err = ''; X.busy = false;
+      xRenderList('最新交易', '实时');
+    }).catch(function(e){ X.busy = false; X.err = xErr(e); xMsg('读取失败：' + X.err); });
+  }
+  function xLoadTts(){
+    X.view = 'tts'; X.busy = true; xMark('tts');
+    fetchJSON(XAPI + 'token-transfers').then(function(o){
+      X.items = (o && o.items) || []; X.ts = Date.now(); X.err = ''; X.busy = false;
+      xRenderList('最新代币转移', '实时');
+    }).catch(function(e){ X.busy = false; X.err = xErr(e); xMsg('读取失败：' + X.err); });
+  }
+  function xViewAddr(){
+    var q = $('#edx-x-q');
+    var v = q ? String(q.value || '').trim() : '';
+    if (/^0x[0-9a-fA-F]{40}$/.test(v)) { xLoadAddr(v); return; }
+    if (X.lastAddr) { xLoadAddr(X.lastAddr); return; }
+    X.view = 'addr'; xMark('addr'); xSetTitle('地址详情', 'scan.eni.top');
+    xMsg('先在上方输入要查的地址（0x + 40 位），或从交易列表里点任一地址进入。');
+  }
+  function xLoadBlocks(){
+    X.view = 'blocks'; X.busy = true; xMark('');
+    fetchJSON(XAPI + 'blocks?type=block').then(function(o){
+      X.items = (o && o.items) || []; X.ts = Date.now(); X.err = ''; X.busy = false;
+      xRenderList('最新区块', '实时');
+    }).catch(function(e){ X.busy = false; X.err = xErr(e); xMsg('读取失败：' + X.err); });
+  }
+  function xQueryTarget(){
+    var q = $('#edx-x-q');
+    var v = q ? String(q.value || '').trim() : '';
+    if (/^0x[0-9a-fA-F]{40}$/.test(v)) return { kind: 'addr', v: v };
+    if (/^0x[0-9a-fA-F]{64}$/.test(v)) return { kind: 'tx', v: v };
+    if (/^\d{1,12}$/.test(v)) return { kind: 'block', v: v };
+    if (X.lastAddr) return { kind: 'addr', v: X.lastAddr, fallback: true };
+    return null;
+  }
+  function xViewTxs(){
+    var t = xQueryTarget();
+    if (!t) {
+      X.view = 'addrTx'; xMark('txs'); xSetTitle('交易', 'scan.eni.top');
+      xMsg('先在输入框填地址（0x + 40 位）、交易哈希（0x + 64 位）或区块高度，再点这个按钮。');
+      return;
+    }
+    if (t.kind === 'addr') xAddrTxs(t.v);
+    else if (t.kind === 'tx') xLoadTx(t.v);
+    else xBlkTxs(t.v);
+  }
+  function xViewTts(){
+    var t = xQueryTarget();
+    if (!t) {
+      X.view = 'addrTts'; xMark('tts'); xSetTitle('代币转移', 'scan.eni.top');
+      xMsg('先在输入框填地址（0x + 40 位）或交易哈希（0x + 64 位），再点这个按钮。');
+      return;
+    }
+    if (t.kind === 'addr') xAddrTts(t.v);
+    else if (t.kind === 'tx') xTxTts(t.v);
+    else {
+      X.view = 'addrTts'; xMark('tts'); xSetTitle('代币转移', 'scan.eni.top');
+      xMsg('区块高度只能查区块内的交易，请点「交易」；代币转移要填地址或交易哈希。');
+    }
+  }
+  function xAddrTxs(a){
+    X.view = 'addrTx'; X.busy = true; X.lastAddr = a; xMark('txs'); xSetTitle('地址交易 · ' + xShort(a), 'scan.eni.top');
+    xMsg('读取中…');
+    fetchJSON(XAPI + 'addresses/' + a + '/transactions').then(function(o){
+      X.items = (o && o.items) || []; X.ts = Date.now(); X.busy = false; X.err = '';
+      xRenderList('地址交易 · ' + xShort(a), xShort(a));
+    }).catch(function(e){ X.busy = false; console.warn('[xaddrTx]', e && (e.stack || e.message)); xMsg('读取失败：' + xErr(e)); });
+  }
+  function xAddrTts(a){
+    X.view = 'addrTts'; X.busy = true; X.lastAddr = a; xMark('tts'); xSetTitle('地址代币转移 · ' + xShort(a), 'scan.eni.top');
+    xMsg('读取中…');
+    fetchJSON(XAPI + 'addresses/' + a + '/token-transfers').then(function(o){
+      X.items = (o && o.items) || []; X.ts = Date.now(); X.busy = false; X.err = '';
+      xRenderList('地址代币转移 · ' + xShort(a), xShort(a));
+    }).catch(function(e){ X.busy = false; console.warn('[xaddrTts]', e && (e.stack || e.message)); xMsg('读取失败：' + xErr(e)); });
+  }
+  function xTxTts(h){
+    X.view = 'txTts'; X.busy = true; xMark('tts'); xSetTitle('该笔交易的代币转移 · ' + xShort(h), 'scan.eni.top');
+    xMsg('读取中…');
+    fetchJSON(XAPI + 'transactions/' + h + '/token-transfers').then(function(o){
+      X.items = (o && o.items) || []; X.ts = Date.now(); X.busy = false; X.err = '';
+      xRenderList('该笔交易的代币转移 · ' + xShort(h), xShort(h));
+    }).catch(function(e){ X.busy = false; console.warn('[xtxTts]', e && (e.stack || e.message)); xMsg('读取失败：' + xErr(e)); });
+  }
+  function xBlkTxs(n){
+    X.view = 'blkTx'; X.busy = true; xMark('txs'); xSetTitle('区块 #' + n + ' 的交易', 'scan.eni.top');
+    xMsg('读取中…');
+    fetchJSON(XAPI + 'blocks/' + n + '/transactions').then(function(o){
+      var it = (o && o.items) || [];
+      X.items = it; X.ts = Date.now(); X.busy = false;
+      if (!it.length) { xSetTitle('区块 #' + n + ' 的交易', 'scan.eni.top'); xMsg('这个区块里没有交易。'); return; }
+      xRenderList('区块 #' + n + ' 的交易', 'scan.eni.top');
+    }).catch(function(e){ X.busy = false; xMsg('读取失败：' + xErr(e)); });
+  }
+  function xRenderList(title, src){
+    xSetTitle(title, src);
+    if (!X.items.length) { xMsg('暂无数据。'); return; }
+    if (X.view === 'txs' || X.view === 'addrTx' || X.view === 'blkTx') {
+      $('#edx-x-body').innerHTML = X.items.slice(0, 12).map(function(t){
+        var f = (t.from && t.from.hash) || '', to = (t.to && t.to.hash) || '合约创建';
+        var val = xWei(t.value);
+        var right = (val && val > 0) ? (xNum(val) + ' ENI') : (t.method || '调用');
+        return xRow('<div style="display:flex;justify-content:space-between;gap:8px">' +
+          '<div style="min-width:0">' +
+            '<div style="font-size:10px;color:#cfd6e4">' + xShort(t.hash) + ' ' + xBadge(t.status) + '</div>' +
+            '<div style="font-size:8px;color:#66718a;letter-spacing:.04em;margin-top:2px">' + xShort(f) + ' → ' + (t.to ? xShort(to) : '创建合约') + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;white-space:nowrap">' +
+            '<div style="font-size:10px;color:#57d6c1">' + right + '</div>' +
+            '<div style="font-size:8px;color:#66718a;margin-top:2px">' + xTime(t.timestamp) + '</div>' +
+          '</div></div>');
+      }).join('') + '<div class="edx-note" style="margin:7px 0 0">显示最近 ' + Math.min(12, X.items.length) + ' 笔（接口一次返回 ' + X.items.length + ' 笔），点任意一笔查看详情。</div>';
+      var limT = Math.min(12, X.items.length);
+      $$('#edx-x-body > div').forEach(function(el, i){
+        if (i < limT) { el.style.cursor = 'pointer'; el.setAttribute('data-xtx', X.items[i].hash); }
+      });
+    } else if (X.view === 'tts' || X.view === 'addrTts' || X.view === 'txTts') {
+      $('#edx-x-body').innerHTML = X.items.slice(0, 12).map(function(t){
+        var f = (t.from && t.from.hash) || '', to = (t.to && t.to.hash) || '';
+        var tk = t.token || {};
+        var sym = tk.symbol || 'TOKEN';
+        var dec = (t.total && t.total.decimals != null) ? Number(t.total.decimals) : (tk.decimals != null ? Number(tk.decimals) : 18);
+        var amt = xWei(t.total && t.total.value, dec);
+        var kind = t.type === 'mint' ? '增发' : (t.type === 'burn' ? '销毁' : '');
+        return xRow('<div style="display:flex;justify-content:space-between;gap:8px">' +
+          '<div style="min-width:0">' +
+            '<div style="font-size:10px;color:#cfd6e4">' + xShort(f) + ' → ' + xShort(to) +
+              (kind ? ' <span style="font-size:8px;color:#66718a">' + kind + '</span>' : '') + '</div>' +
+            '<div style="font-size:8px;color:#66718a;letter-spacing:.04em;margin-top:2px">' + xShort(t.transaction_hash) + '</div>' +
+          '</div>' +
+          '<div style="text-align:right;white-space:nowrap">' +
+            '<div style="font-size:10px;color:#e8c86a">' + (amt == null ? '--' : xNum(amt)) + ' ' + sym + '</div>' +
+            '<div style="font-size:8px;color:#66718a;margin-top:2px">' + xTime(t.timestamp) + '</div>' +
+          '</div></div>');
+      }).join('') + '<div class="edx-note" style="margin:7px 0 0">显示最近 ' + Math.min(12, X.items.length) + ' 笔代币转移（接口一次返回 ' + X.items.length + ' 笔），点任意一笔查看所属交易。</div>';
+      var limS = Math.min(12, X.items.length);
+      $$('#edx-x-body > div').forEach(function(el, i){
+        if (i < limS) { el.style.cursor = 'pointer'; el.setAttribute('data-xtx', X.items[i].transaction_hash); }
+      });
+    } else {
+      $('#edx-x-body').innerHTML = X.items.slice(0, 12).map(function(b){
+        return xRow('<div style="display:flex;justify-content:space-between;gap:8px">' +
+          '<div><div style="font-size:10px;color:#e8c86a">#' + b.height + '</div>' +
+            '<div style="font-size:8px;color:#66718a;margin-top:2px">出块 ' + xShort((b.miner && b.miner.hash) || '') + '</div></div>' +
+          '<div style="text-align:right"><div style="font-size:10px;color:#cfd6e4">' + (b.transactions_count || 0) + ' 笔</div>' +
+            '<div style="font-size:8px;color:#66718a;margin-top:2px">' + xTime(b.timestamp) + '</div></div></div>');
+      }).join('') + '<div class="edx-note" style="margin:7px 0 0">显示最新 ' + Math.min(12, X.items.length) + ' 个区块，点任意一个查看详情。</div>';
+      var limB = Math.min(12, X.items.length);
+      $$('#edx-x-body > div').forEach(function(el, i){
+        if (i < limB) { el.style.cursor = 'pointer'; el.setAttribute('data-xblk', X.items[i].height); }
+      });
+    }
+  }
+
+  function xLoadTx(h){
+    X.view = 'tx'; X.busy = true; xMark('txs'); xSetTitle('交易详情', xShort(h));
+    xMsg('读取中…');
+    fetchJSON(XAPI + 'transactions/' + h).then(function(t){
+      X.busy = false; X.detail = t;
+      var val = xWei(t.value);
+      var fee = t.fee ? xWei(t.fee.value) : null;
+      $('#edx-x-body').innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px">' + xBadge(t.status) +
+          '<span style="font-size:9px;color:#66718a">' + xTime(t.timestamp) + '</span></div>' +
+        xKV([
+          ['交易哈希', '<span style="font-size:9px;word-break:break-all">' + t.hash + '</span>', '', ''],
+          ['区块', xLink('#' + t.block_number, 'block', t.block_number), '', ''],
+          ['From', xLink(xShort((t.from && t.from.hash) || ''), 'addr', (t.from && t.from.hash) || ''), '', ''],
+          ['To', t.to ? xLink(xShort(t.to.hash), 'addr', t.to.hash) : '创建合约', '', ''],
+          ['金额', (val ? xNum(val) : '0') + ' ENI', '', ''],
+          ['手续费', (fee != null ? xNum(fee) : '--') + ' ENI', '', ''],
+          ['Gas 用量', (t.gas_used || '--') + ' / ' + xGwei(t.gas_price), '', ''],
+          ['方法', t.method || '--', '', ''],
+          ['类型', t.type != null ? String(t.type) : '--', '', ''],
+          ['确认数', t.confirmations != null ? t.confirmations : '--', '', '']
+        ]) +
+        '<div class="edx-note" style="margin:8px 0 0">点「From / To / 区块」可继续跳转查询。</div>';
+    }).catch(function(e){ X.busy = false; xMsg('读取失败：' + xErr(e)); });
+  }
+
+  function xLoadBlock(n){
+    X.view = 'block'; X.busy = true; xMark(''); xSetTitle('区块 #' + n, 'scan.eni.top');
+    xMsg('读取中…');
+    fetchJSON(XAPI + 'blocks/' + n).then(function(b){
+      X.busy = false; X.detail = b;
+      $('#edx-x-body').innerHTML =
+        '<div style="font-size:22px;color:#e8c86a;letter-spacing:.06em;margin:2px 0 8px">#' + b.height + '</div>' +
+        xKV([
+          ['时间', xTime(b.timestamp), '', ''],
+          ['交易笔数', b.transactions_count != null ? b.transactions_count : '--', '', ''],
+          ['出块者', xLink(xShort((b.miner && b.miner.hash) || ''), 'addr', (b.miner && b.miner.hash) || ''), '', ''],
+          ['Gas 使用', (b.gas_used_percentage != null ? b.gas_used_percentage + '%' : '--'), '', ''],
+          ['Gas 上限', b.gas_limit || '--', '', ''],
+          ['区块大小', b.size ? (Math.round(b.size / 1024) + ' KB') : '--', '', ''],
+          ['基准费', xGwei(b.base_fee_per_gas), '', ''],
+          ['父区块', xLink('#' + (b.height - 1), 'block', b.height - 1), '', '']
+        ]);
+    }).catch(function(e){ X.busy = false; xMsg('读取失败：' + xErr(e)); });
+  }
+
+  function xLoadAddr(a){
+    X.view = 'addr'; X.busy = true; X.lastAddr = a; xMark('addr'); xSetTitle('地址详情', xShort(a));
+    xMsg('读取中…');
+    Promise.all([
+      fetchJSON(XAPI + 'addresses/' + a).catch(function(){ return null; }),
+      fetchJSON(XAPI + 'addresses/' + a + '/counters').catch(function(){ return null; }),
+      fetchJSON(XAPI + 'addresses/' + a + '/token-balances').catch(function(){ return null; }),
+      fetchJSON(XAPI + 'addresses/' + a + '/transactions').catch(function(){ return null; })
+    ]).then(function(res){
+      X.busy = false;
+      var info = res[0], cnt = res[1], toks = res[2], txs = res[3];
+      if (!info) { xMsg('没有找到这个地址。'); return; }
+      var isC = !!info.is_contract;
+      var evbc = 0, list = [];
+      if (toks && toks.length) {
+        toks.forEach(function(x){
+          var sym = (x.token && x.token.symbol) || '?';
+          var v = xWei(x.value, parseInt((x.token && x.token.decimals) || '18', 10));
+          if (sym === 'EVBC') evbc = v;
+          list.push([sym, xNum(v) + ' ' + sym]);
+        });
+      }
+      var html = '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px">' +
+          '<span style="font-size:9px;color:' + (isC ? '#e8c86a' : '#57d6c1') + ';border:1px solid rgba(232,200,106,.45);border-radius:3px;padding:1px 6px">' + (isC ? '合约地址' : '普通钱包') + '</span>' +
+          '<span style="font-size:9px;color:#66718a">' + (info.reputation === 'ok' ? '已索引' : (info.reputation || '--')) + '</span></div>' +
+        '<div class="edx-note" style="margin:0 0 8px;font-size:9px;word-break:break-all;color:#8b93a7">' + info.hash + '</div>' +
+        xKV([
+          ['ENI 余额', xNum(xWei(info.coin_balance)) + ' ENI', '', 'color:#57d6c1'],
+          ['EVBC 余额', evbc ? (xNum(evbc) + ' EVBC') : '0 EVBC', '', 'color:#e8c86a'],
+          ['交易笔数', (cnt && cnt.transactions_count) || '0', '', ''],
+          ['代币转账', (cnt && cnt.token_transfers_count) || '0', '', ''],
+          ['Gas 消耗', (cnt && cnt.gas_usage_count) || '0', '', '']
+        ]) +
+        (list.length > 1 ? '<div class="edx-note" style="margin:8px 0 0">其他代币：' + list.filter(function(r){ return r[0] !== 'EVBC'; }).join('　') + '</div>' : '') +
+        (txs && txs.items && txs.items.length ? ('<div style="margin:10px 0 4px;font-size:9px;color:#8b93a7;letter-spacing:.08em">最近交易</div>' +
+          txs.items.slice(0, 8).map(function(t){
+            var f = (t.from && t.from.hash) || '', to = (t.to && t.to.hash) || '';
+            var val = xWei(t.value);
+            return xRow('<div style="display:flex;justify-content:space-between;gap:8px">' +
+              '<div style="min-width:0"><div style="font-size:9px;color:#cfd6e4">' + xShort(t.hash) + ' ' + xBadge(t.status) + '</div>' +
+              '<div style="font-size:8px;color:#66718a;margin-top:2px">' + xShort(f) + ' → ' + xShort(to) + '</div></div>' +
+              '<div style="text-align:right"><div style="font-size:9px;color:#57d6c1">' + ((val && val > 0) ? xNum(val) + ' ENI' : (t.method || '调用')) + '</div>' +
+              '<div style="font-size:8px;color:#66718a;margin-top:2px">' + xTime(t.timestamp) + '</div></div></div>');
+          }).join('')) : '<div class="edx-note" style="margin:8px 0 0">这个地址还没有交易记录。</div>');
+      $('#edx-x-body').innerHTML = html;
+    }).catch(function(e){ X.busy = false; xMsg('读取失败：' + xErr(e)); });
+  }
+
+  function xSearch(q){
+    q = String(q || '').trim();
+    if (!q) { xMsg('先输入要查的内容。'); return; }
+    X.q = q;
+    if (/^0x[0-9a-fA-F]{64}$/.test(q)) { xLoadTx(q); return; }
+    if (/^0x[0-9a-fA-F]{40}$/.test(q)) { xLoadAddr(q); return; }
+    if (/^0x/i.test(q)) {
+      xSetTitle('格式不完整', 'scan.eni.top');
+      xMsg('地址需要 0x + 40 位（共 42 个字符），交易哈希需要 0x + 64 位（共 66 个字符）。当前输入 ' + q.length + ' 个字符。');
+      return;
+    }
+    if (/^\d{1,12}$/.test(q)) { xLoadBlock(q); return; }
+    xSetTitle('搜索「' + q + '」', 'scan.eni.top');
+    xMsg('搜索中…');
+    fetchJSON(XAPI + 'search?q=' + encodeURIComponent(q)).then(function(o){
+      var it = (o && o.items) || [];
+      if (!it.length) { xMsg('没有匹配结果。试试完整地址或 0x 开头的哈希。'); return; }
+      $('#edx-x-body').innerHTML = it.slice(0, 10).map(function(r){
+        var kind = r.type || '';
+        var ht = r.address_hash || r.hash || (r.block_number != null ? String(r.block_number) : '');
+        var go = kind === 'transaction' ? 'tx' : (kind === 'block' ? 'block' : 'addr');
+        return xRow('<div style="display:flex;justify-content:space-between;gap:8px">' +
+          '<div style="min-width:0"><div style="font-size:9px;color:#8b93a7;letter-spacing:.06em">' + (kind === 'transaction' ? '交易' : kind === 'block' ? '区块' : '地址') + '</div>' +
+          '<div style="font-size:10px;word-break:break-all;margin-top:2px">' + xLink(xShort(ht), go, ht) + '</div></div></div>');
+      }).join('');
+    }).catch(function(e){ xMsg('搜索失败：' + xErr(e)); });
+  }
+
+  function xBind(){
+    var q = $('#edx-x-q');
+    var go = $('#edx-x-go');
+    function submit(){ if (!q) return; var v = q.value; try { q.blur(); } catch(e){} xSearch(v); }
+    if (q) q.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); submit(); } });
+    if (go) go.addEventListener('click', function(e){ e.preventDefault(); submit(); });
+    var hb = $('#edx-x-back');
+    if (hb) hb.addEventListener('click', function(){ showTab('conf'); });
+    var qu = $('#edx-x-quick');
+    if (qu) qu.addEventListener('click', function(e){
+      var b = e.target.closest('button'); if (!b) return;
+      $$('#edx-x-quick button').forEach(function(x){ x.classList.remove('on'); });
+      b.classList.add('on');
+      var k = b.getAttribute('data-x');
+      if (k === 'addr') xViewAddr();
+      else if (k === 'tts') xViewTts();
+      else if (k === 'blocks') xLoadBlocks();
+      else xViewTxs();
+    });
+    var body = $('#edx-x-body');
+    if (body) body.addEventListener('click', function(e){
+      var t = e.target.closest('[data-xtx],[data-xblk],[data-xgo]');
+      if (!t) return;
+      if (t.getAttribute('data-xtx')) { xLoadTx(t.getAttribute('data-xtx')); return; }
+      if (t.getAttribute('data-xblk')) { xLoadBlock(t.getAttribute('data-xblk')); return; }
+      var go = t.getAttribute('data-xgo'), v = t.getAttribute('data-xv');
+      if (go === 'tx') xLoadTx(v); else if (go === 'block') xLoadBlock(v); else if (go === 'addr' && v) xLoadAddr(v);
+    });
+  }
+
+  function xEnter(){
+    if (X.busy) return;
+    if (X.items.length) return;
+    if (X.view === 'addr' || X.view === 'tx' || X.view === 'block') return;
+    xSetTitle('查询结果', 'scan.eni.top');
+    xMsg('输入地址（0x + 40）、交易哈希（0x + 64）或区块高度后点「查询」；也可以直接点「地址详情 / 交易 / 代币转移」查看对应数据。');
+  }
+
   // ---- 切换 ----
   var homeBlocks = $$('.shell > .grid, .shell > .sub-grid');
   function showTab(id){
-    $$('#edx-tabs .tb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === id); });
+    $$('#edx-tabs .tb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === (id === 'conf' ? 'explore' : id)); });
+    var subOn = (id === 'explore') ? 'explore' : 'conf';
+    $$('#edx-cfg-tabs button, #edx-x-tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-sub') === subOn); });
     $$('#edx-panes .pane').forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-tab') === id); });
+    var hdMap = { explore: '区块链浏览器', conf: '设置' };
+    if (hdMap[id]) {
+      var curPane = panes.querySelector('.pane[data-tab="' + id + '"]');
+      var curB = curPane ? curPane.querySelector('.hd b') : null;
+      if (curB) curB.textContent = hdMap[id];
+    }
     homeBlocks.forEach(function(el){ el.style.display = (id === 'home' ? '' : 'none'); });
     if (id === 'home') window.scrollTo(0, 0);
+    if (id === 'signal') lEnter();
     if (id === 'holders') {
       var cached = readLocal();
       if (cached && !H.rows.length) {
@@ -1262,13 +2106,208 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     }
     if (id === 'signal') renderSignal();
     if (id === 'best') { renderBest(); mineCalc(); bestMeta(); }
+    if (id === 'explore') xEnter();
   }
   $$('#edx-tabs .tb').forEach(function(b){
     b.addEventListener('click', function(){ showTab(b.getAttribute('data-tab')); });
   });
+  // 团队规划 · 页签与试算
+  if (bTabsEl) bTabsEl.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    $$('#edx-b-tabs button').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    var k = b.getAttribute('data-bsub');
+    bWrapBest.style.display = (k === 'team' ? 'none' : '');
+    bWrapTeam.style.display = (k === 'team' ? '' : 'none');
+    var bTitle = bPane.querySelector('.hd b');
+    if (bTitle) bTitle.textContent = (k === 'team' ? '团队规划' : 'EVBC 最佳持币数量');
+  });
+  function edxFmt(n){
+    if (!isFinite(n)) return '--';
+    if (n >= 1000000) return (n / 1000000).toFixed(2) + 'M';
+    if (n >= 10000) return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (n >= 100) return String(Math.round(n));
+    return String(Math.round(n * 10) / 10);
+  }
+  function edxFmtShort(n){
+    if (!isFinite(n) || n <= 0) return '0';
+    if (n >= 1000000) return (n / 1000000).toFixed(2) + 'M';
+    if (n >= 1000) return (n >= 100000) ? Math.round(n / 1000) + 'K' : (Math.round(n / 100) / 10) + 'K';
+    return String(Math.round(n * 10) / 10);
+  }
+  function edxTreeSvg(list, maxI){
+    var n = list.length;
+    var show = Math.min(n, 5);
+    var W = 360, x0 = 10, x1 = W - 10, gap = 5;
+    var cols = show + 1;
+    var bw = (x1 - x0 - gap * (cols - 1)) / cols;
+    var y0 = 2, h0 = 26, h1 = 34;
+    var lyMid = y0 + h0, lyEnd = lyMid + 13;
+    var H = lyEnd + h1 + 8;
+    var cx = W / 2;
+    var s0 = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" xmlns="http://www.w3.org/2000/svg">';
+    s0 += '<rect x="' + (cx - 54) + '" y="' + y0 + '" width="108" height="' + h0 + '" rx="6" fill="rgba(232,200,106,.10)" stroke="rgba(232,200,106,.7)" stroke-width="1"/>';
+    s0 += '<text x="' + cx + '" y="' + (y0 + 17) + '" text-anchor="middle" fill="#e8c86a" font-size="11" font-family="Consolas,monospace">主账号 200</text>';
+    s0 += '<line x1="' + cx + '" y1="' + lyMid + '" x2="' + cx + '" y2="' + lyEnd + '" stroke="rgba(232,200,106,.45)" stroke-width="1"/>';
+    var firstX = x0 + bw / 2, lastX = x0 + bw / 2 + (cols - 1) * (bw + gap);
+    s0 += '<line x1="' + firstX + '" y1="' + (lyMid + 6) + '" x2="' + lastX + '" y2="' + (lyMid + 6) + '" stroke="rgba(232,200,106,.45)" stroke-width="1"/>';
+    for (var i = 0; i < cols; i++){
+      var xi = x0 + bw / 2 + i * (bw + gap);
+      s0 += '<line x1="' + xi + '" y1="' + (lyMid + 6) + '" x2="' + xi + '" y2="' + lyEnd + '" stroke="rgba(232,200,106,.45)" stroke-width="1"/>';
+      if (i < show){
+        var isMax = (i === maxI);
+        var st = isMax ? 'rgba(234,102,104,.85)' : 'rgba(232,200,106,.45)';
+        var fl = isMax ? 'rgba(234,102,104,.12)' : 'rgba(255,255,255,.04)';
+        s0 += '<rect x="' + (xi - bw / 2) + '" y="' + lyEnd + '" width="' + bw + '" height="' + h1 + '" rx="5" fill="' + fl + '" stroke="' + st + '" stroke-width="1"/>';
+        var nm = list[i].nm.length > 4 ? list[i].nm.slice(0, 4) : list[i].nm;
+        s0 += '<text x="' + xi + '" y="' + (lyEnd + 13) + '" text-anchor="middle" fill="#e6edf7" font-size="9.5" font-family="Consolas,monospace">' + nm + '</text>';
+        var vtxt = (isMax && list[i].amt > 0 ? '∛ ' : '') + edxFmtShort(list[i].amt);
+        s0 += '<text x="' + xi + '" y="' + (lyEnd + 26) + '" text-anchor="middle" fill="' + (isMax ? '#e8a4a4' : '#e8c86a') + '" font-size="9" font-family="Consolas,monospace">' + vtxt + '</text>';
+      } else {
+        s0 += '<rect x="' + (xi - bw / 2) + '" y="' + lyEnd + '" width="' + bw + '" height="' + h1 + '" rx="5" fill="none" stroke="rgba(232,200,106,.26)" stroke-width="1" stroke-dasharray="3 3"/>';
+        s0 += '<text x="' + xi + '" y="' + (lyEnd + 21) + '" text-anchor="middle" fill="#8b93a7" font-size="14" font-family="Consolas,monospace">⋯</text>';
+      }
+    }
+    s0 += '</svg>';
+    return s0;
+  }
+  function edxTreeStack(){
+    var W = 360, H = 176;
+    var gold = 'rgba(232,200,106,.55)';
+    var line = 'rgba(232,200,106,.42)';
+    var cy0 = 158, cy1 = [57.95, 157.85, 257.75];
+    var l2c = [], i;
+    for (i = 0; i < 9; i++) l2c.push(10 + 14.65 + i * 33.3);
+    var y0 = 8, y1 = 54, y2 = 100, y3 = 144;
+    var h0 = 24, h1 = 24, h2 = 22;
+    function node(cx, y, w, h, txt, big){
+      var t = '<rect x="' + (cx - w / 2) + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="4" fill="rgba(232,200,106,' + (big ? '.16' : '.10') + ')" stroke="' + gold + '" stroke-width="1"/>';
+      t += '<text x="' + cx + '" y="' + (y + h / 2 + 3.2) + '" text-anchor="middle" fill="#e8c86a" font-size="8" font-family="Consolas,monospace">' + txt + '</text>';
+      return t;
+    }
+    function fork(px, py, kids, ky){
+      var t = '', mid = py + (ky - py) / 2;
+      t += '<line x1="' + px + '" y1="' + py + '" x2="' + px + '" y2="' + mid + '" stroke="' + line + '" stroke-width="1"/>';
+      t += '<line x1="' + kids[0] + '" y1="' + mid + '" x2="' + kids[kids.length - 1] + '" y2="' + mid + '" stroke="' + line + '" stroke-width="1"/>';
+      for (var j = 0; j < kids.length; j++){
+        t += '<line x1="' + kids[j] + '" y1="' + mid + '" x2="' + kids[j] + '" y2="' + ky + '" stroke="' + line + '" stroke-width="1"/>';
+      }
+      return t;
+    }
+    var o = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" xmlns="http://www.w3.org/2000/svg">';
+    // L0 -> L1
+    o += fork(cy0, y0 + h0, cy1, y1);
+    // L1 -> L2（每组各一根横线）
+    for (i = 0; i < 3; i++) o += fork(cy1[i], y1 + h1, [l2c[i * 3], l2c[i * 3 + 1], l2c[i * 3 + 2]], y2);
+    // L2 -> L3
+    for (i = 0; i < 9; i++) o += '<line x1="' + l2c[i] + '" y1="' + (y2 + h2) + '" x2="' + l2c[i] + '" y2="' + y3 + '" stroke="' + line + '" stroke-width="1"/>';
+    // 节点
+    o += node(cy0, y0, 108, h0, '200', true);
+    for (i = 0; i < 3; i++) o += node(cy1[i], y1, 80, h1, '200', true);
+    for (i = 0; i < 9; i++) o += node(l2c[i], y2, 29.3, h2, '200', false);
+    for (i = 0; i < 9; i++) o += node(l2c[i], y3, 29.3, h2, '1K', false);
+    // 右侧标注
+    var labs = [[y0 + 12, '1 × 200'], [y1 + 12, '3 × 200'], [y2 + 11, '9 × 200'], [y3 + 11, '9 × 1,000']];
+    for (i = 0; i < labs.length; i++){
+      o += '<text x="' + (W - 2) + '" y="' + labs[i][0] + '" text-anchor="end" fill="#8b93a7" font-size="8" font-family="Consolas,monospace">' + labs[i][1] + '</text>';
+    }
+    o += '</svg>';
+    return o;
+  }
+  function edxTeamRows(){ return $$('#edx-t-list .edx-t-row'); }
+  function edxTeamAdd(nm, amt){
+    var box = $('#edx-t-list'); if (!box) return;
+    var inStyle = 'padding:7px 8px;background:#0f131b;border:1px solid #2a3140;border-radius:6px;color:#e6edf7;font-size:12px;width:100%;box-sizing:border-box;letter-spacing:0';
+    var row = '<div class="edx-t-row" style="display:grid;grid-template-columns:minmax(0,1fr) 82px 92px;gap:6px;align-items:center;margin:5px 0">' +
+      '<input class="nm" value="' + nm + '" style="' + inStyle + '">' +
+      '<input class="amt" inputmode="decimal" value="' + amt + '" style="' + inStyle + ';text-align:right">' +
+      '<span class="cv" style="text-align:right;font-size:11px;color:#8b93a7;letter-spacing:.02em">--</span>' +
+    '</div>';
+    box.insertAdjacentHTML('beforeend', row);
+  }
+  function edxTeamRender(){
+    var rows = edxTeamRows();
+    var list = [];
+    for (var i = 0; i < rows.length; i++){
+      var nmEl = rows[i].querySelector('.nm');
+      var amEl = rows[i].querySelector('.amt');
+      var nm = (nmEl.value || '').trim() || ('分支 ' + (i + 1));
+      var v = parseFloat(amEl.value);
+      list.push({ nm: nm, amt: (isFinite(v) && v > 0) ? v : 0, el: rows[i] });
+    }
+    if (!list.length) return;
+    var maxI = 0;
+    for (var j = 1; j < list.length; j++){ if (list[j].amt > list[maxI].amt) maxI = j; }
+    var total = 0, C = Math.cbrt(list[maxI].amt);
+    for (var k = 0; k < list.length; k++){
+      var amt = list[k].amt;
+      total += amt;
+      var cv = list[k].el.querySelector('.cv');
+      if (k === maxI){
+        if (amt > 0) C += 0;
+        cv.textContent = amt > 0 ? '∛ = ' + edxFmt(Math.cbrt(amt)) : '--';
+        cv.style.color = '#e8a4a4';
+      } else {
+        var g = 10 * Math.min(amt, 10000) + Math.max(amt - 10000, 0);
+        C += g;
+        cv.textContent = amt > 0 ? edxFmt(g) : '--';
+        cv.style.color = amt > 10000 ? '#e8a4a4' : '#7fd6b1';
+      }
+    }
+    $('#edx-t-c').textContent = edxFmt(C);
+    $('#edx-t-total').textContent = edxFmt(total);
+    $('#edx-t-eff').textContent = total > 0 ? (C / total).toFixed(2) : '--';
+    $('#edx-t-max').textContent = list[maxI].nm + ' · ' + edxFmt(list[maxI].amt);
+    var over = [];
+    for (var m = 0; m < list.length; m++){ if (list[m].amt > 10000) over.push(list[m].nm); }
+    var hint;
+    if (over.length){
+      hint = '⚠ ' + over.join('、') + ' 已超 1 万，超出部分只按 1 倍计（掉 10 倍）。新人应开成新分支，不要往这支里加。';
+    } else if (list.length === 1){
+      hint = '只有 1 条分支时，整支只计 ∛，几乎不产生推广算力。至少铺 3 条以上。';
+    } else {
+      hint = '目前 ' + list.length + ' 条分支都未超红线。再开一条满 1 万的新分支 ≈ +100,000 算力；给最大那支加币几乎无增益。';
+    }
+    $('#edx-t-hint').textContent = hint;
+    $('#edx-t-tag').textContent = list.length + ' 条分支';
+    var treeEl = $('#edx-t-tree');
+    if (treeEl) treeEl.innerHTML = edxTreeSvg(list, maxI);
+  }
+  edxTeamAdd('自己', 3800);
+  edxTeamAdd('A 团队', 10000);
+  edxTeamAdd('B 团队', 10000);
+  edxTeamAdd('C 团队', 10000);
+  edxTeamAdd('D 团队', 10000);
+  edxTeamRender();
+  var stackEl = $('#edx-t-tree2');
+  if (stackEl) stackEl.innerHTML = edxTreeStack();
+  (function(){
+    var add = $('#edx-t-add'), del = $('#edx-t-del'), listBox = $('#edx-t-list');
+    if (add) add.addEventListener('click', function(){
+      var seq = ['E 团队', 'F 团队', 'G 团队', 'H 团队', 'I 团队', 'J 团队', 'K 团队', 'L 团队'];
+      edxTeamAdd(seq[Math.max(0, edxTeamRows().length - 5)] || '新分支', 10000);
+      edxTeamRender();
+    });
+    if (del) del.addEventListener('click', function(){
+      var rows = edxTeamRows();
+      if (rows.length <= 1) return;
+      rows[rows.length - 1].parentNode.removeChild(rows[rows.length - 1]);
+      edxTeamRender();
+    });
+    if (listBox) listBox.addEventListener('input', function(){ edxTeamRender(); });
+  })();
+
+  xBind();
+  $$('#edx-cfg-tabs button, #edx-x-tabs button').forEach(function(b){
+    b.addEventListener('click', function(){ showTab(b.getAttribute('data-sub')); });
+  });
+  var cfgO = $('#edx-cfg-explore'), cfgO2 = $('#edx-cfg-x-open');
+  if (cfgO) cfgO.addEventListener('click', function(){ showTab('explore'); });
+  if (cfgO2) cfgO2.addEventListener('click', function(){ showTab('explore'); });
 
   function tick(){
     if ($('.pane[data-tab="signal"]').classList.contains('on')) renderSignal();
+    /* 浏览器页改为按需查询，不做实时轮询 */
   }
   renderSignal();
   renderBest();
