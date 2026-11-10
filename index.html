@@ -603,7 +603,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
           '<button data-ltok="eni">ENI</button><button class="on" data-ltok="evbc">EVBC</button>' +
         '</div>' +
         '<div class="edx-l-form">' +
-          '<label>买入价 · USDT<input id="edx-l-buy" inputmode="decimal"></label>' +
+          '<label>买入价 · USDT<input id="edx-l-buy" inputmode="decimal"><span id="edx-l-hint-buy" style="display:block;margin-top:5px;font-size:9.5px;line-height:1.5;color:#66718a;white-space:nowrap">初始价格，请输入实际购买价格</span></label>' +
           '<label>卖单价格 · USDT<input id="edx-l-sell" readonly></label>' +
           '<label>档数<input id="edx-l-n" inputmode="numeric"></label>' +
         '</div>' +
@@ -1095,8 +1095,8 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     tok: 'evbc',
     ready: false,
     def: {
-      eni:  { buy: 28.68,  qty: 100,  fee: 0.2, start: 1,   step: 1, n: 10, fin: 0.2, fout: 0.2, sk: 0 },
-      evbc: { buy: 0.1356, qty: 1000, fee: 0.2, start: 10,  step: 1, n: 10, fin: 2, fout: 8, sk: 1 }
+      eni:  { buy: 20,  qty: 100,  fee: 0.2, start: 1,   step: 1, n: 10, fin: 0.2, fout: 0.2, sk: 0 },
+      evbc: { buy: 0.1, qty: 1000, fee: 0.2, start: 10,  step: 1, n: 10, fin: 2, fout: 8, sk: 1 }
     }
   };
   // EVBC 卖单手续费：每周二 0 点下调 1%，下限 2%；按本机日期计算，无需联网
@@ -1136,10 +1136,11 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   function lFill(){
     var d = LD.def[LD.tok];
     var live = lLive();
-    if (live != null) d.buy = live;
+    // 初始价固定，不随实时价覆盖（ENI 20 / EVBC 0.1）
     var b = $('#edx-l-buy'), sEl = $('#edx-l-sell'), n = $('#edx-l-n');
-    if (b) b.value = String(+d.buy.toFixed(6));
-    if (sEl) sEl.value = String(+(d.buy * (1 + (d.start + (d.sk || 0) * (d.step || 0)) / 100)).toFixed(d.buy >= 10 ? 2 : 4));
+    if (b) b.value = d.buy >= 10 ? d.buy.toFixed(2) : d.buy.toFixed(4);
+    var hb = $('#edx-l-hint-buy'); if (hb) hb.style.display = '';
+    if (sEl) sEl.value = (d.buy * (1 + (d.start + (d.sk || 0) * (d.step || 0)) / 100)).toFixed(d.buy >= 10 ? 2 : 4);
     if (n) n.value = String(d.n);
     var lv = $('#edx-l-live');
     if (lv) lv.textContent = live != null ? (LD.tok === 'eni' ? '实时 $' + live.toFixed(2) : '实时 $' + live.toFixed(4)) : '实时价';
@@ -1160,7 +1161,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     var step = d.step != null ? d.step : (n > 1 ? (d.end - p0) / (n - 1) : 0);
     var sell = buy * (1 + (p0 + (d.sk || 0) * step) / 100);   // 卖单价格框显示的档位
     var sEl = $('#edx-l-sell');
-    if (sEl) sEl.value = String(+sell.toFixed(buy >= 10 ? 2 : 4));
+    if (sEl) sEl.value = sell.toFixed(buy >= 10 ? 2 : 4);
     var feeEl = $('#edx-l-feeinfo');
     if (feeEl) feeEl.textContent = LD.tok === 'evbc' ? evbcFeeText(new Date()) : 'ENI 买卖手续费各 0.2%';
     var qty = d.qty;                // 买入数量
