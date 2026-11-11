@@ -1,7 +1,7 @@
 /* 量子阿尔法终端 · 离线壳
    策略：导航请求走 网络优先（保证拿到最新行情页），失败回落到缓存；
    图标与 manifest 走 缓存优先。实时行情数据不缓存——它必须走网络。 */
-const VERSION = 'qa-v3.4.2';
+const VERSION = 'qa-v3.4.3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
