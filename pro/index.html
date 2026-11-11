@@ -2576,6 +2576,24 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
       body: JSON.stringify({ query: q })
     }).then(function(r){ return r.json(); });
   }
+  function btQuery(q, tries){
+    tries = tries || 2;
+    return btQ(q).catch(function(){
+      if (tries > 1) return btQuery(q, tries - 1);
+      throw new Error('query failed');
+    });
+  }
+  // 分批并发，避免 12 个请求同时打出被 WebView 掐断
+  function btSeries(fns, size){
+    var at = 0;
+    function step(){
+      if (at >= fns.length) return Promise.resolve();
+      var part = fns.slice(at, at + size);
+      at += size;
+      return Promise.all(part.map(function(f){ return f(); })).then(step);
+    }
+    return step();
+  }
   function btAgo(ts){
     var h = (Date.now() / 1000 - ts) / 3600;
     if (h < 24) return (Math.round(h * 10) / 10) + ' 小时前';
@@ -2585,17 +2603,19 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     var d = LD.def[tok];
     var fin = (d.fin || 0) / 100;
     var fout = (tok === 'evbc' ? evbcFoutAt(new Date()) : d.fout) / 100;
-    var k = 0, sumRet = 0, firstTs = 0;
+    var k = 0, sumRet = 0, firstTs = 0, okN = 0, bad = 0;
     rows.forEach(function(r){
+      if (r.err) { bad++; return; }
+      okN++;
       if (!r.hit) return;
       k++;
       sumRet += ((r.px * (1 - fout) - buy * (1 + fin)) / (buy * (1 + fin))) * 100;
       if (!firstTs || r.ts < firstTs) firstTs = r.ts;
     });
-    var rate = Math.round((k / n) * 1000) / 10;
+    var rate = okN ? Math.round((k / okN) * 1000) / 10 : 0;
     var avg = k ? (Math.round((sumRet / k) * 100) / 100) : 0;
     var cells = [
-      ['成交档数', k + ' / ' + n],
+      ['成交档数', k + ' / ' + okN],
       ['成交率', rate + '%'],
       ['平均净差价', k ? (avg > 0 ? '+' : '') + avg.toFixed(2) + '%' : '--'],
       ['最快成交', firstTs ? btAgo(firstTs) : '--']
@@ -2605,7 +2625,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
       return '<div><span style="display:block;font-size:8px;letter-spacing:.08em;color:#8b96ad">' + c[0] + '</span>' +
         '<span style="display:block;margin-top:2px;font-family:var(--font-display);font-size:11px;font-weight:700;color:#f2c14e">' + c[1] + '</span></div>';
     }).join('') + '</div>';
-    h += '<div class="edx-note" style="margin-top:7px">期间成交价区间 ' + lo + ' ~ ' + hi + '。平均净差价已扣买入与卖出费（当前卖费 ' + (fout * 100) + '%）。</div>';
+    h += '<div class="edx-note" style="margin-top:7px">期间成交价区间 ' + lo + ' ~ ' + hi + '。平均净差价已扣买入与卖出费（当前卖费 ' + (fout * 100) + '%）' + (bad ? '；' + bad + ' 档查询失败，已排除在成交率之外，建议重试' : '') + '。</div>';
     return h;
   }
   function btRun(){
@@ -2624,21 +2644,23 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     if (list) list.innerHTML = '';
 
     var pair = BT_PAIR[tok], now = Math.floor(Date.now() / 1000), t0 = now - BT.span * 86400;
-    var rows = [], tasks = [];
+    var rows = [], fns = [];
     for (var i = 0; i < n; i++) {
       (function(i){
         var px = buy * (1 + (d.start + d.step * i) / 100);
         var q = '{matches(first:1,orderBy:timestamp,orderDirection:asc,where:{pairAddress:"' + pair + '",timestamp_gte:' + t0 + ',price_gte:"' + btWei(px) + '"}){timestamp}}';
-        tasks.push(btQ(q).then(function(r){
-          var m = r && r.data && r.data.matches && r.data.matches[0];
-          rows.push({ i: i, px: px, hit: !!m, ts: m ? Number(m.timestamp) : 0 });
-        }).catch(function(){ rows.push({ i: i, px: px, hit: false, ts: 0 }); }));
+        fns.push(function(){
+          return btQuery(q).then(function(r){
+            var m = r && r.data && r.data.matches && r.data.matches[0];
+            rows.push({ i: i, px: px, hit: !!m, ts: m ? Number(m.timestamp) : 0 });
+          }).catch(function(){ rows.push({ i: i, px: px, hit: false, ts: 0, err: true }); });
+        });
       })(i);
     }
     var loQ = '{matches(first:1,orderBy:price,orderDirection:asc,where:{pairAddress:"' + pair + '",timestamp_gte:' + t0 + '}){price}}';
     var hiQ = '{matches(first:1,orderBy:price,orderDirection:desc,where:{pairAddress:"' + pair + '",timestamp_gte:' + t0 + '}){price}}';
 
-    Promise.all([Promise.all(tasks), btQ(loQ), btQ(hiQ)]).then(function(res){
+    Promise.all([btSeries(fns, 4), btQuery(loQ), btQuery(hiQ)]).then(function(res){
       var pick = function(x){
         var m = x && x.data && x.data.matches && x.data.matches[0];
         return m ? Number(m.price) / 1e18 : NaN;
@@ -2655,9 +2677,11 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
       );
       if (list) {
         list.innerHTML = rows.map(function(r){
-          var st = r.hit
-            ? '<span style="color:#5ef2d0">成交 · ' + btAgo(r.ts) + '</span>'
-            : '<span style="color:#8b96ad">未触及</span>';
+          var st = r.err
+            ? '<span style="color:#ff5c7a">查询失败</span>'
+            : (r.hit
+              ? '<span style="color:#5ef2d0">成交 · ' + btAgo(r.ts) + '</span>'
+              : '<span style="color:#8b96ad">未触及</span>');
           return '<div style="display:flex;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.08)">' +
             '<span style="min-width:16px;font-size:9px;color:#6f7b8d">' + (r.i + 1) + '</span>' +
             '<span style="font-size:10px;color:#8b96ad">+' + (d.start + d.step * r.i) + '%</span>' +
