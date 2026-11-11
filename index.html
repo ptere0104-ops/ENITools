@@ -614,6 +614,17 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
         '<div id="edx-l-sum"></div>' +
         '<div id="edx-l-list"></div>' +
         '<div class="edx-note" style="margin-top:7px">口径：每档挂单价 = 买价×(1+该档加价比例)；每行四列为买入价 / 该档卖出价 / 单位差价 / 该档加价比例；汇总四格对应卖单价格那一档；ENI 首档 +1%，EVBC 首档 +10%，两币每档 +1%；赚取差价为扣费后净值（ENI 买 0.2%/卖 0.2%，EVBC 买 2%、卖单费每周二下调 1%）。</div>' +
+      '</div>' +
+      '<div class="edx-card" id="edx-bt-card">' +
+        '<div class="ct"><b>历史回测</b><i id="edx-bt-tag">ENIDEX 成交</i></div>' +
+        '<div id="edx-bt-spans" style="display:flex;gap:6px;margin-top:8px">' +
+          '<div data-bt="7" style="flex:1;text-align:center;padding:7px 0;border:1px solid rgba(242,193,78,.55);background:rgba(242,193,78,.12);color:#f2c14e;font-size:11px;cursor:pointer;border-radius:3px">近 7 天</div>' +
+          '<div data-bt="30" style="flex:1;text-align:center;padding:7px 0;border:1px solid rgba(255,255,255,.12);background:transparent;color:#8b96ad;font-size:11px;cursor:pointer;border-radius:3px">近 30 天</div>' +
+        '</div>' +
+        '<div id="edx-bt-run" style="margin-top:8px;text-align:center;padding:9px 0;border:1px solid rgba(242,193,78,.45);background:rgba(242,193,78,.10);color:#f2c14e;font-size:11.5px;font-weight:700;letter-spacing:.06em;cursor:pointer;border-radius:3px">开始回测</div>' +
+        '<div id="edx-bt-sum" style="margin-top:9px"></div>' +
+        '<div id="edx-bt-list" style="margin-top:4px;max-height:32vh;overflow-y:auto;overscroll-behavior:contain"></div>' +
+        '<div class="edx-note" style="margin-top:7px">按当前买入价与档数回算：每个挂单价在所选时间窗内是否被成交触及；数据取 ENIDEX 子图成交记录，未计排队与滑点，历史不代表未来。</div>' +
       '</div>'
     ) +
     pane('best', 'EVBC 最佳持币数量', '', '') +
@@ -2544,6 +2555,156 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     });
   }
   }
+
+  /* ---- 阶梯策略历史回测（ENIDEX 子图成交记录）---- */
+  var BT = { span: 7, busy: false };
+  var BT_EP = 'https://graph.eni.top/subgraphs/name/orderbook-dex';
+  var BT_PAIR = {
+    evbc: '0xc7182f3e2e030cf83d627be9fa3bfdb6fd04ce04',
+    eni: '0x6ada4a104bde43362e4caa47229870e8364175d0'
+  };
+  // 价格转 18 位定点字符串（纯字符串拼接，避免大数精度问题）
+  function btWei(v){
+    var f = Number(v).toFixed(6).split('.');
+    var frac = ((f[1] || '') + '000000000000').slice(0, 12);
+    return f[0] + frac + '000000';
+  }
+  function btQ(q){
+    return fetch(BT_EP, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q })
+    }).then(function(r){ return r.json(); });
+  }
+  function btAgo(ts){
+    var h = (Date.now() / 1000 - ts) / 3600;
+    if (h < 24) return (Math.round(h * 10) / 10) + ' 小时前';
+    return (Math.round((h / 24) * 10) / 10) + ' 天前';
+  }
+  function btRender(rows, lo, hi, buy, tok, n){
+    var d = LD.def[tok];
+    var fin = (d.fin || 0) / 100;
+    var fout = (tok === 'evbc' ? evbcFoutAt(new Date()) : d.fout) / 100;
+    var k = 0, sumRet = 0, firstTs = 0;
+    rows.forEach(function(r){
+      if (!r.hit) return;
+      k++;
+      sumRet += ((r.px * (1 - fout) - buy * (1 + fin)) / (buy * (1 + fin))) * 100;
+      if (!firstTs || r.ts < firstTs) firstTs = r.ts;
+    });
+    var rate = Math.round((k / n) * 1000) / 10;
+    var avg = k ? (Math.round((sumRet / k) * 100) / 100) : 0;
+    var cells = [
+      ['成交档数', k + ' / ' + n],
+      ['成交率', rate + '%'],
+      ['平均净差价', k ? (avg > 0 ? '+' : '') + avg.toFixed(2) + '%' : '--'],
+      ['最快成交', firstTs ? btAgo(firstTs) : '--']
+    ];
+    var h = '<div class="edx-note" style="margin:0 0 6px">$' + buy.toFixed(buy >= 10 ? 2 : 4) + ' 买入 · ' + n + ' 档 · 近 ' + BT.span + ' 天</div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' + cells.map(function(c){
+      return '<div><span style="display:block;font-size:8px;letter-spacing:.08em;color:#8b96ad">' + c[0] + '</span>' +
+        '<span style="display:block;margin-top:2px;font-family:var(--font-display);font-size:11px;font-weight:700;color:#f2c14e">' + c[1] + '</span></div>';
+    }).join('') + '</div>';
+    h += '<div class="edx-note" style="margin-top:7px">期间成交价区间 ' + lo + ' ~ ' + hi + '。平均净差价已扣买入与卖出费（当前卖费 ' + (fout * 100) + '%）。</div>';
+    return h;
+  }
+  function btRun(){
+    if (BT.busy) return;
+    var tok = LD.tok, d = LD.def[tok];
+    var buy = lNum('#edx-l-buy', d.buy);
+    var n = Math.max(1, Math.min(20, Math.round(lNum('#edx-l-n', d.n))));
+    var sum = $('#edx-bt-sum'), list = $('#edx-bt-list'), run = $('#edx-bt-run');
+    if (!(buy > 0)) {
+      if (sum) sum.innerHTML = '<div class="edx-note">买入价需大于 0。</div>';
+      return;
+    }
+    BT.busy = true;
+    if (run) run.textContent = '回测中…';
+    if (sum) sum.innerHTML = '<div class="edx-note">正在读取 ENIDEX 成交记录…</div>';
+    if (list) list.innerHTML = '';
+
+    var pair = BT_PAIR[tok], now = Math.floor(Date.now() / 1000), t0 = now - BT.span * 86400;
+    var rows = [], tasks = [];
+    for (var i = 0; i < n; i++) {
+      (function(i){
+        var px = buy * (1 + (d.start + d.step * i) / 100);
+        var q = '{matches(first:1,orderBy:timestamp,orderDirection:asc,where:{pairAddress:"' + pair + '",timestamp_gte:' + t0 + ',price_gte:"' + btWei(px) + '"}){timestamp}}';
+        tasks.push(btQ(q).then(function(r){
+          var m = r && r.data && r.data.matches && r.data.matches[0];
+          rows.push({ i: i, px: px, hit: !!m, ts: m ? Number(m.timestamp) : 0 });
+        }).catch(function(){ rows.push({ i: i, px: px, hit: false, ts: 0 }); }));
+      })(i);
+    }
+    var loQ = '{matches(first:1,orderBy:price,orderDirection:asc,where:{pairAddress:"' + pair + '",timestamp_gte:' + t0 + '}){price}}';
+    var hiQ = '{matches(first:1,orderBy:price,orderDirection:desc,where:{pairAddress:"' + pair + '",timestamp_gte:' + t0 + '}){price}}';
+
+    Promise.all([Promise.all(tasks), btQ(loQ), btQ(hiQ)]).then(function(res){
+      var pick = function(x){
+        var m = x && x.data && x.data.matches && x.data.matches[0];
+        return m ? Number(m.price) / 1e18 : NaN;
+      };
+      var lo = pick(res[1]), hi = pick(res[2]);
+      var digits = buy >= 10 ? 2 : 4;
+      rows.sort(function(a, b){ return a.i - b.i; });
+      BT.done = true;
+      if (sum) sum.innerHTML = btRender(
+        rows,
+        isFinite(lo) ? '$' + lo.toFixed(digits) : '--',
+        isFinite(hi) ? '$' + hi.toFixed(digits) : '--',
+        buy, tok, n
+      );
+      if (list) {
+        list.innerHTML = rows.map(function(r){
+          var st = r.hit
+            ? '<span style="color:#5ef2d0">成交 · ' + btAgo(r.ts) + '</span>'
+            : '<span style="color:#8b96ad">未触及</span>';
+          return '<div style="display:flex;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.08)">' +
+            '<span style="min-width:16px;font-size:9px;color:#6f7b8d">' + (r.i + 1) + '</span>' +
+            '<span style="font-size:10px;color:#8b96ad">+' + (d.start + d.step * r.i) + '%</span>' +
+            '<span style="margin-left:auto;font-family:var(--font-display);font-size:11.5px;color:#eef2f7">$' + r.px.toFixed(digits) + '</span>' +
+            '<span style="min-width:88px;text-align:right;font-size:10px">' + st + '</span></div>';
+        }).join('');
+      }
+    }).catch(function(){
+      if (sum) sum.innerHTML = '<div class="edx-note">回测失败：读取成交记录超时，请稍后再试。</div>';
+    }).then(function(){
+      BT.busy = false;
+      if (run) run.textContent = '开始回测';
+    });
+  }
+  function btInvalidate(){
+    if (!BT.done) return;
+    BT.done = false;
+    var sum = $('#edx-bt-sum'), list = $('#edx-bt-list');
+    if (sum) sum.innerHTML = '<div class="edx-note">参数已变更，点「开始回测」重新计算。</div>';
+    if (list) list.innerHTML = '';
+  }
+  ['#edx-l-buy', '#edx-l-n'].forEach(function(sel){
+    var el = $(sel);
+    if (el) { el.addEventListener('input', btInvalidate); el.addEventListener('change', btInvalidate); }
+  });
+  var btToks = $('#edx-l-toks');
+  if (btToks) btToks.addEventListener('click', function(){ setTimeout(btInvalidate, 0); });
+
+  (function(){
+    var card = $('#edx-bt-card');
+    if (!card) return;
+    card.addEventListener('click', function(e){
+      var t = e.target;
+      var sp = t && t.closest ? t.closest('[data-bt]') : null;
+      if (sp) {
+        BT.span = Number(sp.getAttribute('data-bt')) || 7;
+        $$('#edx-bt-spans > div').forEach(function(el){
+          var on = el.getAttribute('data-bt') === String(BT.span);
+          el.style.borderColor = on ? 'rgba(242,193,78,.55)' : 'rgba(255,255,255,.12)';
+          el.style.background = on ? 'rgba(242,193,78,.12)' : 'transparent';
+          el.style.color = on ? '#f2c14e' : '#8b96ad';
+        });
+        return;
+      }
+      if (t && t.closest && t.closest('#edx-bt-run')) btRun();
+    });
+  })();
 
   xBind();
   $$('#edx-cfg-tabs button, #edx-x-tabs button, #edx-news-tabs button, #edx-partners-tabs button').forEach(function(b){
