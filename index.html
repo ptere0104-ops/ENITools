@@ -268,6 +268,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   .edx-card .ct{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
   .edx-card .ct b{font-size:10px;letter-spacing:.1em;color:#b9c3d4}
   .edx-card .ct i{font-style:normal;font-size:8px;letter-spacing:.08em;color:#5f6b7d}
+  #edx-pt-tag{letter-spacing:.01em;text-align:right;max-width:250px;line-height:1.45}
   .edx-kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
   .edx-kv .k{font-size:8px;letter-spacing:.08em;color:#66718a;display:block;margin-bottom:2px}
   .edx-kv .v{font-family:var(--font-display,monospace);font-size:13px;letter-spacing:.03em;color:#e6edf7}
@@ -617,6 +618,8 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     ) +
     pane('best', 'EVBC 最佳持币数量', '', '') +
     pane('explore', '区块链浏览器', 'SCAN · 263', '') +
+    pane('news', 'ENI 资讯', 'X · OFFICIAL', '') +
+    pane('partners', '合作与生态', 'ECOSYSTEM', '') +
     pane('conf', '更多', 'SYS', '');
   function pane(id, title, tag, body){
     return '<div class="pane" data-tab="' + id + '"><div class="hd"><b>' + title + '</b>' + (tag ? '<span>' + tag + '</span>' : '') + '</div>' + body + '</div>';
@@ -759,7 +762,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   var cfgTitleB = cfgHd.querySelector('b');
   if (cfgTitleB) cfgTitleB.textContent = '设置';
   cfgHd.insertAdjacentHTML('afterend',
-    '<div class="edx-side" id="edx-cfg-tabs" style="margin:0 0 9px"><button class="on" data-sub="explore">区块链浏览器</button><button data-sub="conf">设置</button></div>' +
+    '<div class="edx-side" id="edx-cfg-tabs" style="margin:0 0 9px"><button class="on" data-sub="explore">区块链</button><button data-sub="news">资讯</button><button data-sub="conf">设置</button></div>' +
     '<div id="edx-cfg-body"></div>'
   );
   var cfgBody = $('#edx-cfg-body');
@@ -1695,7 +1698,7 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   var xHdTitle = xHdEl.querySelector('b');
   if (xHdTitle) xHdTitle.textContent = '区块链浏览器';
   xHdEl.insertAdjacentHTML('afterend',
-    '<div class="edx-side" id="edx-x-tabs" style="margin:0 0 9px"><button class="on" data-sub="explore">区块链浏览器</button><button data-sub="conf">设置</button></div>'
+    '<div class="edx-side" id="edx-x-tabs" style="margin:0 0 9px"><button class="on" data-sub="explore">区块链</button><button data-sub="news">资讯</button><button data-sub="conf">设置</button></div>'
   );
 
   xPaneEl.insertAdjacentHTML('beforeend',
@@ -2091,11 +2094,11 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   // ---- 切换 ----
   var homeBlocks = $$('.shell > .grid, .shell > .sub-grid');
   function showTab(id){
-    $$('#edx-tabs .tb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === (id === 'conf' ? 'explore' : id)); });
-    var subOn = (id === 'explore') ? 'explore' : 'conf';
-    $$('#edx-cfg-tabs button, #edx-x-tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-sub') === subOn); });
+    $$('#edx-tabs .tb').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === ((id === 'conf' || id === 'news' || id === 'partners') ? 'explore' : id)); });
+    var subOn = (id === 'explore' || id === 'conf' || id === 'news' || id === 'partners') ? id : 'explore';
+    $$('#edx-cfg-tabs button, #edx-x-tabs button, #edx-news-tabs button, #edx-partners-tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-sub') === subOn); });
     $$('#edx-panes .pane').forEach(function(p){ p.classList.toggle('on', p.getAttribute('data-tab') === id); });
-    var hdMap = { explore: '区块链浏览器', conf: '设置' };
+    var hdMap = { explore: '区块链浏览器', conf: '设置', news: 'ENI 资讯', partners: '合作与生态' };
     if (hdMap[id]) {
       var curPane = panes.querySelector('.pane[data-tab="' + id + '"]');
       var curB = curPane ? curPane.querySelector('.hd b') : null;
@@ -2115,6 +2118,8 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     if (id === 'signal') renderSignal();
     if (id === 'best') { renderBest(); mineCalc(); bestMeta(); }
     if (id === 'explore') xEnter();
+    if (id === 'news') { newsLoad(); ptLoad(); }
+    if (id === 'partners') ptLoad();
   }
   $$('#edx-tabs .tb').forEach(function(b){
     b.addEventListener('click', function(){ showTab(b.getAttribute('data-tab')); });
@@ -2305,8 +2310,243 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
     if (listBox) listBox.addEventListener('input', function(){ edxTeamRender(); });
   })();
 
+  // ---- ENI 资讯（X 官方动态，广告已过滤）----
+  var NEWS = { items: [], ts: 0, busy: false };
+  var NEWS_REMOTE = 'https://ptere0104-ops.github.io/ENITools/news-eni.json';
+  function newsPath(){
+    try {
+      if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+        return NEWS_REMOTE;
+      }
+    } catch (e) {}
+    return (String(location.pathname).indexOf('/pro/') > -1 ? '../' : './') + 'news-eni.json';
+  }
+  function newsEsc(t){
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function newsTime(t){
+    var d = new Date(t);
+    if (isNaN(d.getTime())) return '--';
+    var p = function(v){ return v < 10 ? '0' + v : '' + v; };
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  /* 内置中文对照：远程快照未带 zh 时按帖子 id 兜底显示中文 */
+  var NEWS_ZH = {
+   "2120339021285195890": "🚀 ENI Chain 正式迈入 10,000 倍 MEME 时代！\n\n🔥 随着更多 MEME 项目加入生态，ENI 正进入 MEME 创新与增长的新阶段！\n\n🌍 全球势头正在聚集。MEME 浪潮，此刻开启！",
+   "2118540195696107890": "🚀 ENI × Sonvia｜生态合作\n\nENI 正通过一项新的合作拓展其 Web3 生态。合作方 @Sonvia_ai 是一个 AI 原生平台，可将 AI 生成的音乐转化为可拥有、可交易、可授权的数字资产。🎵\n\n我们将共同探索新的机会",
+   "2118535721233551372": "🤝 很高兴与 Sonvia 达成合作！\n\n我们正共同探索：ENI 的高性能区块链基础设施，如何为 AI 驱动的音乐资产和数字音乐经济打开新的可能。",
+   "2117465577761435831": "🚀 ENI 超级生态｜莫比乌斯交互协议（MÖB）正式上线！\nMÖB 已在 ENI 主网正式上线！\n\n灵感来自莫比乌斯环，构建于 ENI 高性能模块化架构之上，MÖB 具备双池、双合约、双通道、双周期",
+   "2052469150157828562": "企业级 Web3 的未来架构，已经到来。\n\nENI Matrix = 主网 + Hub + AppChains，由超有序并行引擎（Hyper-ordered Parallel Engine）驱动，可在无限规模下实现实时结算。\n\n这不只是一条链，而是下一个经济体的操作系统。🔧⚡\n\n🌐"
+  };
+  function newsRender(){
+    var el = $('#edx-news-list');
+    if (!el) return;
+    if (!NEWS.items.length) {
+      el.innerHTML = '<div class="edx-note" style="margin:6px 0 0">暂时没有读到资讯。定时任务每 30 分钟刷新一次，刚部署时首份数据可能还没生成。</div>';
+      return;
+    }
+    var h = '';
+    NEWS.items.forEach(function(it){
+      var zh = it.zh ? String(it.zh) : (NEWS_ZH[String(it.id)] || '');
+      var en = String(it.text || '');
+      h += '<div style="padding:9px 0;border-top:1px dashed rgba(255,255,255,.08)">' +
+             '<div class="edx-note" style="margin:0 0 4px;color:#e8c86a;letter-spacing:.08em">' + newsTime(it.time) + '</div>' +
+             '<div class="nb nb-zh" style="font-size:11px;line-height:1.6;color:#cfd7e6;white-space:pre-wrap;word-break:break-word">' + newsEsc(zh || en) + '</div>' +
+             (zh ? '<div class="nb nb-en" style="display:none;font-size:11px;line-height:1.6;color:#aeb7c8;white-space:pre-wrap;word-break:break-word">' + newsEsc(en) + '</div>' : '') +
+             '<div style="margin-top:7px;display:flex;align-items:center;flex-wrap:wrap;gap:10px">' +
+               '<a href="' + String(it.url || '') + '" target="_blank" rel="noopener" style="font-size:9px;letter-spacing:.1em;color:#8b93a7;text-decoration:none;border-bottom:1px solid rgba(139,147,167,.4);padding-bottom:1px">查看原帖 ↗</a>' +
+               (zh ? '<button class="nb-sw" data-lang="zh" style="font-size:9px;letter-spacing:.1em;color:#8b93a7;background:transparent;border:1px solid rgba(139,147,167,.35);border-radius:2px;padding:3px 7px">原文 EN</button>' : '') +
+             '</div></div>';
+    });
+    el.innerHTML = h;
+    [].forEach.call(el.querySelectorAll('.nb-sw'), function(btn){
+      btn.addEventListener('click', function(){
+        var row = btn.parentNode.parentNode;
+        var zhEl = row.querySelector('.nb-zh');
+        var enEl = row.querySelector('.nb-en');
+        if (!zhEl || !enEl) return;
+        var showingZh = zhEl.style.display !== 'none';
+        zhEl.style.display = showingZh ? 'none' : '';
+        enEl.style.display = showingZh ? '' : 'none';
+        btn.textContent = showingZh ? '中文' : '原文 EN';
+      });
+    });
+  }
+  function newsLoad(force){
+    var el = $('#edx-news-list');
+    if (!el || NEWS.busy) return;
+    if (!force && NEWS.items.length && (Date.now() - NEWS.ts) < 600000) { newsRender(); return; }
+    NEWS.busy = true;
+    el.innerHTML = '<div class="edx-note" style="margin:6px 0 0">读取中…</div>';
+    function newsApply(d, offline){
+      NEWS.items = (d && d.items) || [];
+      NEWS.ts = Date.now();
+      NEWS.busy = false;
+      var tag = $('#edx-news-tag');
+      if (tag) tag.textContent = NEWS.items.length
+        ? ('最新 ' + NEWS.items.length + ' 条 · ' + String((d && d.updated) || '').slice(5, 16).replace('T', ' ') + (offline ? ' · 离线快照' : ''))
+        : '暂无数据';
+      newsRender();
+    }
+    function newsFail(){
+      NEWS.busy = false;
+      var tag = $('#edx-news-tag');
+      if (tag) tag.textContent = '读取失败';
+      var el2 = $('#edx-news-list');
+      if (el2) el2.innerHTML = '<div class="edx-note" style="margin:6px 0 0">暂时取不到资讯数据，稍后点「重新载入」再试。</div>';
+    }
+    fetchJSON(newsPath(), 12000).then(function(d){
+      newsApply(d, false);
+    }).catch(function(){
+      fetchJSON((String(location.pathname).indexOf('/pro/') > -1 ? '../' : './') + 'news-eni.json', 8000)
+        .then(function(d){ newsApply(d, true); })
+        .catch(newsFail);
+    });
+  }
+  var newsPaneEl = panes.querySelector('.pane[data-tab="news"]');
+  if (newsPaneEl) {
+    newsPaneEl.insertAdjacentHTML('beforeend',
+      '<div class="edx-side" id="edx-news-tabs" style="margin:0 0 9px"><button class="on" data-sub="explore">区块链</button><button data-sub="news">资讯</button><button data-sub="conf">设置</button></div>' +
+                  '<div class="pt-stat" id="edx-subtabs" style="margin:0 0 10px"><div class="on" data-pane="news"><span>官方动态</span></div><div data-pane="pt"><span>合作与生态</span></div></div>' +
+      '<div class="edx-card" id="edx-news-card"><div class="ct"><b>官方动态</b><i id="edx-news-tag">加载中</i></div>' +
+        '<div id="edx-news-list"><div class="edx-note" style="margin:6px 0 0">读取中…</div></div>' +
+        '<div class="edx-side" style="margin-top:9px"><button id="edx-news-reload">重新载入</button></div>' +
+      '</div>' +
+      '<div class="edx-card pt-card" id="edx-pt-card" style="display:none"><div class="ct"><b>合作与生态</b><i id="edx-pt-tag">加载中</i></div>' +
+        '<div id="edx-pt-stat"></div>' +
+        '<div id="edx-pt-body"><div class="edx-note" style="margin:6px 0 0">读取中…</div></div>' +
+        '<div class="edx-side" style="margin-top:9px"><button id="edx-pt-reload">重新载入</button></div>' +
+      '</div>' +
+      '<div class="edx-note" id="edx-pt-note" style="font-size:9px;line-height:1.6;display:none">点上方板块名可切换显示，每个板块只显示自身条目；右侧标注国家 / 地区。</div>' +
+      '<div class="edx-note" id="edx-news-note">来源：X 上 @ENI__Official 官方账号。只显示官方本人发布的帖子，时间线里夹带的第三方推广帖 / 广告已自动过滤。正文默认显示中文译文，点「原文 EN」可切回英文原意，「查看原帖」可打开 X 看原文与配图。快照随官方发布更新，不一定实时。</div>'
+    );
+    var newsReload = $('#edx-news-reload');
+    if (newsReload) newsReload.addEventListener('click', function(){ newsLoad(true); });
+    var subBtns = $$('#edx-subtabs > div');
+    var subWrap = $('#edx-subtabs');
+    if (subWrap) {
+      subWrap.addEventListener('click', function(ev){
+        var t = ev.target;
+        while (t && t !== subWrap && !(t.getAttribute && t.getAttribute('data-pane'))) t = t.parentNode;
+        if (!t || t === subWrap) return;
+        edxSubShow(t.getAttribute('data-pane'));
+      });
+    }
+    function edxSubShow(k){
+      subBtns.forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-pane') === k); });
+      var nc = $('#edx-news-card'), pc = $('#edx-pt-card');
+      var nn = $('#edx-news-note'), pn = $('#edx-pt-note');
+      if (nc) nc.style.display = (k === 'news') ? '' : 'none';
+      if (pc) pc.style.display = (k === 'pt') ? '' : 'none';
+      if (nn) nn.style.display = (k === 'news') ? '' : 'none';
+      if (pn) pn.style.display = (k === 'pt') ? '' : 'none';
+      if (k === 'pt') ptLoad();
+      if (newsPaneEl) newsPaneEl.scrollTop = 0;
+    }
+    subBtns.forEach(function(b){
+      b.onclick = function(){ edxSubShow(b.getAttribute('data-pane')); };
+    });
+
+  /* ---- 合作与生态 ---- */
+  var PT_REMOTE = 'https://ptere0104-ops.github.io/ENITools/partners-eni.json';
+  var PT_MIN = {"ver":"pt1","updated":"","ecosystem":{"total":79,"cats":[{"key":"DeFi","count":17,"sample":["Fufuture","Dswap","Ave.ai"]},{"key":"Wallet","count":5,"sample":["Bitget Wallet","Safe","TokenPocket"]},{"key":"Infra & Tools","count":50,"sample":["TokenTools","APRO","DefiLlama"]},{"key":"NFT","count":2,"sample":[]},{"key":"DApps","count":5,"sample":["Edubuk","KUANT"]}]},"groups":[{"key":"inst","title":"机构 · 超级节点 / 百大机构","items":[{"n":"NTT","d":"日本电信集团 · 超级节点","t":"2026-05-27","s":"第三方时间线"},{"n":"CertiK","d":"区块链安全审计 · 百大机构","t":"2026-05-27","s":"第三方时间线"},{"n":"DODO","d":"去中心化交易所 · 百大生态","t":"2026-06-01","s":"第三方时间线"},{"n":"ChainCatcher","d":"Web3 媒体 · 超级节点","t":"2026-10-30","s":"媒体报道"}]},{"key":"coop","title":"战略项目合作","items":[{"n":"Sonvia","d":"AI 音乐资产平台","t":"2026-11-06","s":"官方 X"},{"n":"HolmesAI","d":"AI 数字分身接入模块化 L1","t":"2026-05-11","s":"合作方官方帖"},{"n":"NerveNetwork","d":"跨链互通","t":"2026-06-12","s":"媒体报道"}]},{"key":"infra","title":"基础设施与钱包集成","items":[{"n":"Chainlink","d":"价格喂价中继到 ENI","t":"","s":"官方文档"},{"n":"SafePal","d":"X1 硬件钱包固件支持","t":"2026-04-22","s":"固件记录"}]}],"note":"各条为公开披露内容，来源 OpenAI ChatGPT 查询。"};
+  var PT = { data: null, ts: 0, loaded: false, busy: false };
+
+  var ptReload = $('#edx-pt-reload');
+  if (ptReload) ptReload.addEventListener('click', function(){ ptLoad(true); });
+
+  function ptEsc(t){
+    return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function ptCat(k){
+    if (k === 'Infra & Tools') return '基础设施';
+    if (k === 'NFT') return 'NFT';
+    return String(k == null ? '' : k);
+  }
+  function ptPath(){
+    try {
+      if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return PT_REMOTE + '?t=' + Date.now();
+    } catch (e) {}
+    return (String(location.pathname).indexOf('/pro/') > -1 ? '../' : './') + 'partners-eni.json';
+  }
+  function ptDraw(){
+    var el = $('#edx-pt-body');
+    if (!el) return;
+    var d = PT.data || PT_MIN;
+    var gs = d.groups || [];
+    var cur = (typeof PT.idx === 'number' && PT.idx >= 0 && PT.idx < gs.length) ? PT.idx : 0;
+    PT.idx = cur;
+    var stat = '<div class="pt-stat">' +
+      gs.map(function(g, gi){
+        return '<div data-gidx="' + gi + '"' + (gi === cur ? ' class="on"' : '') + '><span>' + ptEsc(g.short || g.title) + '</span></div>';
+      }).join('') +
+      '</div>';
+    var sb = $('#edx-pt-stat');
+    if (sb) {
+      sb.innerHTML = stat;
+      if (!sb.getAttribute('data-bound')) {
+        sb.setAttribute('data-bound', '1');
+        sb.addEventListener('click', function(ev){
+          var t = ev.target;
+          while (t && t !== sb && !(t.getAttribute && t.getAttribute('data-gidx'))) t = t.parentNode;
+          if (!t || t === sb) return;
+          var idx = parseInt(t.getAttribute('data-gidx'), 10);
+          if (isNaN(idx) || idx === PT.idx) return;
+          PT.idx = idx;
+          ptDraw();
+        });
+      }
+    }
+    var h = '';
+    var g = gs[cur];
+    if (g) {
+      var gItems = g.items || [];
+      h += '<div class="pt-grp"><div class="pt-gh">' + ptEsc(g.title) + '</div>' +
+        (g.sub ? '<div class="pt-sub">' + ptEsc(g.sub) + '</div>' : '');
+      gItems.forEach(function(it){
+        h += '<div class="pt-r">' +
+          '<div class="pt-r1"><b>' + ptEsc(it.n) + '</b>' + (it.r ? '<i>' + ptEsc(it.r) + '</i>' : '') + '</div>' +
+          '<div class="pt-r2">' + ptEsc(it.d) + (it.p ? '<span>' + ptEsc(it.p) + '</span>' : '') + '</div>' +
+        '</div>';
+      });
+      h += '</div>';
+    }
+    if (d.note) h += '<div class="edx-note" style="margin:9px 0 0;font-size:9px;line-height:1.6">' + ptEsc(d.note) + '</div>';
+    el.innerHTML = h;
+    try { el.scrollTop = 0; el.scrollTo && el.scrollTo(0, 0); } catch (e) {}
+    setTimeout(function(){ try { el.scrollTop = 0; } catch (e) {} }, 60);
+    var tag = $('#edx-pt-tag');
+    if (tag) tag.textContent = '资料来源 OpenAI ChatGPT 查询';
+  }
+  function ptLoad(force){
+    if (PT.busy) return;
+    if (!force && PT.loaded) { ptDraw(); return; }
+    PT.busy = true; PT.loaded = true;
+    var el = $('#edx-pt-body');
+    if (el) el.innerHTML = '<div class="edx-note" style="margin:6px 0 0">读取中…</div>';
+    function ok(d, offline){
+      PT.busy = false;
+      PT.data = (d && d.groups) ? d : PT_MIN;
+      PT.ts = Date.now();
+      var tag = $('#edx-pt-tag');
+      if (tag) tag.textContent = offline ? '离线快照' : '';
+      ptDraw();
+    }
+    fetchJSON(ptPath(), 12000).then(function(d){ ok(d, false); }).catch(function(){
+      fetchJSON((String(location.pathname).indexOf('/pro/') > -1 ? '../' : './') + 'partners-eni.json', 8000)
+        .then(function(d){ ok(d, true); })
+        .catch(function(){
+          PT.busy = false; PT.data = PT_MIN;
+          var tag = $('#edx-pt-tag'); if (tag) tag.textContent = '资料来源 OpenAI ChatGPT 查询';
+          ptDraw();
+        });
+    });
+  }
+  }
+
   xBind();
-  $$('#edx-cfg-tabs button, #edx-x-tabs button').forEach(function(b){
+  $$('#edx-cfg-tabs button, #edx-x-tabs button, #edx-news-tabs button, #edx-partners-tabs button').forEach(function(b){
     b.addEventListener('click', function(){ showTab(b.getAttribute('data-sub')); });
   });
   var cfgO = $('#edx-cfg-explore'), cfgO2 = $('#edx-cfg-x-open');
@@ -2328,4 +2568,52 @@ ${v}`],{type:"text/csv;charset=utf-8"}),h=document.createElement("a");h.href=URL
   }
 })();
 </script></body>
+<style>
+  /* 资讯 / 设置：标题固定顶部，内容块推到底部，限高内部滚动，不铺满整屏 */
+  #edx-panes .pane.on[data-tab="news"]{
+    display:flex;flex-direction:column;
+    min-height:calc(100vh - 236px);
+    max-height:calc(100vh - 236px);
+    overflow:hidden;
+    padding-bottom:8px;
+  }
+  #edx-panes .pane.on[data-tab="conf"]{
+    display:flex;flex-direction:column;
+    min-height:calc(100vh - 236px);
+    padding-bottom:72px;
+  }
+  #edx-panes .pane.on[data-tab="news"] .hd,
+  #edx-panes .pane.on[data-tab="conf"] .hd{flex:0 0 auto}
+  #edx-panes .pane.on[data-tab="news"] #edx-news-tabs{flex:0 0 auto;min-height:30px;margin:0 0 9px}
+  #edx-panes .pane.on[data-tab="news"] .edx-card{margin-top:auto;flex:0 0 auto}
+  #edx-panes .pane.on[data-tab="news"] .edx-card{margin-top:0}
+  #edx-panes .pane.on[data-tab="news"] #edx-news-list{max-height:36vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  #edx-panes .pane.on[data-tab="news"] #edx-pt-body{max-height:33vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+  #edx-panes .pane.on[data-tab="conf"] #edx-cfg-tabs{flex:0 0 auto;min-height:30px}
+  #edx-panes .pane.on[data-tab="conf"] #edx-cfg-body{flex:0 1 auto;margin-top:auto;max-height:48vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  /* 合作页签：标题顶部，内容贴底，限高滚动 */
+  #edx-panes .pane.on[data-tab="partners"]{display:flex;flex-direction:column;min-height:calc(100vh - 236px);padding-bottom:72px}
+  #edx-panes .pane.on[data-tab="partners"] .hd{flex:0 0 auto}
+  #edx-panes .pane.on[data-tab="partners"] #edx-partners-tabs{flex:0 0 auto;min-height:30px;margin:0 0 9px}
+  #edx-panes .pane.on[data-tab="partners"] .edx-card{margin-top:auto;flex:0 0 auto}
+  #edx-panes .pane.on[data-tab="partners"] #edx-pt-body{max-height:40vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .pt-stat{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 10px}
+  .pt-stat>div{flex:1 1 58px;min-width:0;padding:10px 6px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(232,200,106,.22);border-radius:2px;background:rgba(232,200,106,.05);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .pt-stat>div:active{background:rgba(232,200,106,.16);border-color:rgba(232,200,106,.55)}
+  .pt-stat>div.on{background:rgba(232,200,106,.18);border-color:rgba(232,200,106,.62)}
+  .pt-stat>div.on span{color:#f0dfae}
+  .pt-stat span{font-size:11px;color:#d3d8e2;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pt-todo{display:inline-block;margin-left:5px;padding:0 4px;border:1px solid rgba(232,160,60,.5);border-radius:2px;font-size:8px;font-style:normal;color:#e8a03c;letter-spacing:.04em;vertical-align:1px}
+  .pt-sub{font-size:9px;color:#8b93a7;line-height:1.6;margin:6px 0 0}
+  .pt-grp{margin:0 0 10px}
+  .pt-gh{font-size:10px;letter-spacing:.1em;color:#cfd7e6;padding-bottom:5px;border-bottom:1px dashed rgba(255,255,255,.1);display:flex;justify-content:space-between;align-items:center}
+  .pt-gh i{font-style:normal;font-size:9px;color:#8b93a7}
+  .pt-r{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+  .pt-r1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .pt-r1 b{font-size:11px;color:#e6ebf5;font-weight:600}
+  .pt-r1 i{font-style:normal;font-size:9px;color:#8b93a7;white-space:nowrap}
+  .pt-r2{font-size:10px;color:#9aa5b8;line-height:1.5;margin-top:2px;display:flex;flex-wrap:wrap;gap:6px}
+  .pt-r2 span{color:#6f7a8d;font-size:9px}
+
+</style>
 </html>
