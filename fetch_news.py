@@ -163,7 +163,15 @@ def main():
     if '--file' in args:
         local = args[args.index('--file') + 1]
 
-    html = io.open(local, encoding='utf-8', errors='ignore').read() if local else fetch_html(SOURCE_URL)
+    if local:
+        html = io.open(local, encoding='utf-8', errors='ignore').read()
+    else:
+        try:
+            html = fetch_html(SOURCE_URL)
+        except Exception as e:  # noqa: BLE001
+            # 数据中心 IP 常被 X 拦（HTTP 403）；此时保留仓库里已有的快照，不算失败。
+            print('source unavailable, keep existing snapshot: %r' % e)
+            return
 
     raw = parse(html)
     keep = []
@@ -195,6 +203,11 @@ def main():
     print('raw=%d kept=%d' % (len(raw), len(keep)))
     for it in keep:
         print(' -', it['time'], '|', it['text'][:100].replace('\n', ' '))
+
+    if not keep:
+        # 没解析出官方帖时不要覆盖旧快照（避免把资讯清空）。
+        print('no official items parsed, keep existing snapshot')
+        return
 
     if not dry:
         with io.open(OUT_PATH, 'w', encoding='utf-8', newline='\n') as f:
