@@ -497,6 +497,40 @@ body.mkt .pairs{display:none}
 .r2+.r2{border-left:1px solid rgba(255,255,255,.05)}
 .r2 span{font-size:10px;color:var(--tx3);letter-spacing:.03em}
 .r2 b{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--tx);white-space:nowrap}
+.r2 b em{font-style:normal;font-family:var(--mono);font-size:10.5px;font-weight:600;margin-left:6px;white-space:nowrap;letter-spacing:0}
+.r2 b em.up{color:#3ee0b0}
+.r2 b em.dn{color:#ff5c7a}
+.r2 b em.gray{color:var(--tx3)}
+.r2 b.up{color:#3ee0b0}
+.r2 b.dn{color:#ff5c7a}
+.r2 b.gray{color:var(--tx3)}
+.hd-tot{padding:13px 12px 11px;display:flex;align-items:baseline;flex-wrap:wrap;gap:7px}
+.hd-tot b{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--gold);letter-spacing:.01em;line-height:1.1}
+.hd-tot i{font-style:normal;font-size:10.5px;color:var(--tx3)}
+.hd-tot em{font-style:normal;font-family:var(--mono);font-size:11px;font-weight:600}
+.hd-tot em.up{color:#3ee0b0}
+.hd-tot em.dn{color:#ff5c7a}
+.hd-tot em.gray{color:var(--tx3)}
+.hd4{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:rgba(255,255,255,.055)}
+.hd4>div{padding:12px;background:#08101c}
+.hd4>div:first-child,.hd4>div:nth-child(2){border-bottom:1px solid rgba(255,255,255,.045)}
+.hd4 .lbl{font-size:10px;letter-spacing:.03em;color:var(--tx3)}
+.hd4 .num{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--gold);margin:3px 0 2px;line-height:1.15}
+.hd4 .pct{font-size:10px;color:var(--tx3)}
+.hd4 .dlt{margin-top:4px;font-size:10.5px;font-weight:600}
+.hd4 .dlt.up{color:#3ee0b0}
+.hd4 .dlt.dn{color:#ff5c7a}
+.hd4 .dlt.gray{color:var(--tx3)}
+.hd4 .num.up{color:#3ee0b0}
+.hd4 .num.dn{color:#ff5c7a}
+.mg-list{padding:2px 0 4px}
+.mg-row{display:flex;align-items:center;gap:10px;padding:9px 12px;font-size:11.5px;
+  border-bottom:1px solid rgba(255,255,255,.04)}
+.mg-row:last-child{border-bottom:0}
+.mg-k{flex:1;min-width:0;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mg-v{font-family:var(--mono);font-size:12px;font-weight:700}
+.mg-v.up{color:#3ee0b0}
+.mg-v.dn{color:#ff5c7a}
 .kvt{padding:2px 0 6px}
 .kvr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;
   border-bottom:1px solid rgba(255,255,255,.045);font-size:12.5px}
@@ -1449,13 +1483,14 @@ window.ENI = window.ENI || {};
       return grab(2).then(function (txt) {
         done++;
         if (onTick) onTick(done, pages.length);
-        var out = [], re = /"address":"0x[0-9a-fA-F]+","value":"(\d+)"/g, m;
-        while ((m = re.exec(txt)) !== null) out.push(Number(m[1]) / DEC);
-        return out;
+        var out = [], add = [], re = /"address":"(0x[0-9a-fA-F]+)","value":"(\d+)"/g, m;
+        while ((m = re.exec(txt)) !== null) { out.push(Number(m[2]) / DEC); add.push(m[1]); }
+        return { v: out, a: add };
       });
     })).then(function (arrs) {
-      var all = [];
-      for (var i = 0; i < arrs.length; i++) all = all.concat(arrs[i]);
+      var all = [], add = [];
+      for (var i = 0; i < arrs.length; i++) { all = all.concat(arrs[i].v); add = add.concat(arrs[i].a); }
+      E._holdAddrs = add;
       return all;
     });
   };
@@ -4826,6 +4861,8 @@ window.ENI = window.ENI || {};
       c.day = day; c.at = Date.now();
       H.calc = c; H.calcBusy = false;
       try { localStorage.setItem('radrCalc', JSON.stringify(c)); } catch (e1) {}
+      hdPut(c.nq, c.nAll, day, hd4(c));
+      adPut(vals, E._holdAddrs);
       if (E.rerender) E.rerender();
     }).catch(function (e) {
       H.calcBusy = false; H.calcErr = (e && e.message) || '扫描失败';
@@ -4866,6 +4903,94 @@ window.ENI = window.ENI || {};
     } catch (e) { return x.toFixed(d); }
   }
 
+  // 每日快照：记录合格地址 / 全部持币地址，用于「较昨日」
+  function hdDay(d) {
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function hdRead() {
+    try { var o = JSON.parse(localStorage.getItem('v4holdDaily') || '{}'); return o || {}; } catch (e) { return {}; }
+  }
+  // 四档：100-200 / 201-500 / 501-1000 / 1000+
+  function hd4(C) {
+    var out = [0, 0, 0, 0];
+    ((C && C.dist) || []).forEach(function (d) {
+      var i = d.hi === null ? 3 : (d.lo < 200 ? 0 : (d.lo < 500 ? 1 : (d.lo < 1000 ? 2 : 3)));
+      out[i] += (d.cnt || 0);
+    });
+    return out;
+  }
+  function hdPut(nq, nAll, day, bins) {
+    if (!(nq > 0) && !(nAll > 0)) return;
+    var o = hdRead(), k = day || hdDay(new Date());
+    o[k] = { nq: nq, nAll: nAll, bins: bins || null, at: Date.now() };
+    var ks = Object.keys(o).sort();
+    if (ks.length > 150) ks.slice(0, ks.length - 150).forEach(function (x) { delete o[x]; });
+    try { localStorage.setItem('v4holdDaily', JSON.stringify(o)); } catch (e) {}
+  }
+  // 内置基线：上一营业日实测值，仅当「昨日」正好是这一天时作为兜底（本机还没积累快照时也能显示较昨日）
+  // bins 为 11-14 的四档人数（100-200 / 201-500 / 501-1000 / 1000+）
+  var V4_BASE_SNAP = { day: '2026-11-14', nq: 31894, nAll: 62359, bins: [16145, 15062, 680, 636] };
+  function hdPrev() {
+    var o = hdRead(), today = hdDay(new Date());
+    var ks = Object.keys(o).filter(function (k) { return k < today; }).sort();
+    if (ks.length) {
+      var k = ks[ks.length - 1], v = o[k] || {};
+      return { day: k, nq: Number(v.nq), nAll: Number(v.nAll), bins: Array.isArray(v.bins) ? v.bins : null };
+    }
+    var y = hdDay(new Date(Date.now() - 86400000));
+    if (V4_BASE_SNAP.day === y) {
+      return { day: V4_BASE_SNAP.day, nq: V4_BASE_SNAP.nq, nAll: V4_BASE_SNAP.nAll, bins: V4_BASE_SNAP.bins };
+    }
+    return null;
+  }
+  function hdDlt(cur, prevVal, prevDay) {
+    if (prevVal == null || !isFinite(prevVal)) return '<em class="gray">较昨日 —</em>';
+    var lab = '较昨日';
+    if (prevDay) {
+      var y = hdDay(new Date(Date.now() - 86400000));
+      if (prevDay !== y) lab = '较 ' + prevDay.slice(5);
+    }
+    var d = cur - prevVal;
+    var cls = d > 0 ? 'up' : (d < 0 ? 'dn' : 'gray');
+    var t = d > 0 ? ('+' + th(d, 0)) : (d < 0 ? ('-' + th(Math.abs(d), 0)) : '±0');
+    return '<em class="' + cls + '">' + t + ' ' + lab + '</em>';
+  }
+
+  // 档位迁移：逐日保存「合格地址 → 档位」明细（只存地址后 16 位，省空间），次日对比出迁移
+  var AD_KEY = 'v4holdAddr';
+  function adBin(v) { return v >= 1000 ? 4 : (v >= 501 ? 3 : (v >= 201 ? 2 : 1)); }
+  function adKey(a) { return String(a).toLowerCase().replace(/^0x/, '').slice(-16); }
+  function adRead() { try { return JSON.parse(localStorage.getItem(AD_KEY) || 'null'); } catch (e) { return null; } }
+  function adPrev() { try { return JSON.parse(localStorage.getItem(AD_KEY + 'P') || 'null'); } catch (e) { return null; } }
+  function adPut(vals, addrs) {
+    if (!vals || !addrs || !addrs.length || vals.length !== addrs.length) return;
+    var m = {}, i, day = hdDay(new Date());
+    for (i = 0; i < vals.length; i++) {
+      if (!(vals[i] >= 100)) continue;
+      m[adKey(addrs[i])] = adBin(vals[i]);
+    }
+    var cur = adRead();
+    if (cur && cur.day && cur.day !== day) {
+      try { localStorage.setItem(AD_KEY + 'P', JSON.stringify(cur)); } catch (e) {}
+    }
+    try { localStorage.setItem(AD_KEY, JSON.stringify({ day: day, m: m })) } catch (e) {}
+  }
+  function adMigrate() {
+    var p = adPrev(), c = adRead();
+    if (!p || !p.m || !c || !c.m || p.day === c.day) return null;
+    var up = 0, dn = 0, addn = 0, drop = 0, rows = {}, k, b0, b1;
+    for (k in c.m) { if (p.m[k] == null) addn++; }
+    for (k in p.m) { if (c.m[k] == null) drop++; }
+    for (k in c.m) {
+      b0 = p.m[k]; b1 = c.m[k];
+      if (b0 == null || b1 == null || b0 === b1) continue;
+      if (b1 > b0) up++; else dn++;
+      var rk = b0 + '>' + b1;
+      rows[rk] = (rows[rk] || 0) + 1;
+    }
+    return { day0: p.day, day1: c.day, up: up, dn: dn, addn: addn, drop: drop, rows: rows };
+  }
+
   function hPct(rows, n) {
     var s = 0;
     for (var i = 0; i < Math.min(n, rows.length); i++) s += (rows[i].pct || 0);
@@ -4876,13 +5001,13 @@ window.ENI = window.ENI || {};
     var f = E.f, H = E.hold, pair = E.activePair;
     var dp = (E.PAIRS[pair] || {}).dp || 4;
     if (!H.busy && (H.tok !== pair || (!H.rows.length && !H.err))) E.openHold(pair);
-    if (H.sub !== 'dist' && H.sub !== 'rank') H.sub = 'dist';
+    if (H.sub !== 'dist' && H.sub !== 'rank' && H.sub !== 'diff') H.sub = 'dist';
     if (H.sub === 'dist') { E.openRadr(); if (H.radr || H.radrErr) { E.buildCalc(); E.loadSupply(); } }
 
     var top = '<div class="hdtop"><button class="hdback" data-hback="1" aria-label="返回">‹</button>' +
       '<span>持币分析</span><em>' + pair + '</em></div>';
 
-    var nav = '<div class="hdnav">' + [['dist', '最佳持币区间'], ['rank', '团队规划']].map(function (x) {
+    var nav = '<div class="hdnav">' + [['dist', '最佳持币区间'], ['rank', '团队规划'], ['diff', '新增打散']].map(function (x) {
       return '<button data-hdt="' + x[0] + '" class="' + (H.sub === x[0] ? 'on' : '') + '">' + x[1] + '</button>';
     }).join('') + '</div>';
 
@@ -4942,10 +5067,12 @@ window.ENI = window.ENI || {};
         '<div class="hr-legend"><i class="of"></i>官方区间<i class="dot"></i>自算最优区间</div></div>';
 
       var tickTxt = H.calcBusy ? ((H.calcTick || 0) + '/' + (H.calcTot || 7)) : '7 批 · 全部成功';
+      hdPut(C.nq, C.nAll, C.day || '', hd4(C));
+      var pv = hdPrev();
       var card2 = '<div class="mkcard"><div class="sec-hd"><h2>全网状态</h2><span class="sub">' + tickTxt + '</span></div>' +
         '<div class="rows2">' +
-        '<div class="r2"><span>合格地址 ≥100</span><b>' + th(C.nq, 0) + '</b></div>' +
-        '<div class="r2"><span>全部持币地址</span><b>' + th(C.nAll, 0) + '</b></div></div>' +
+        '<div class="r2"><span>合格地址 ≥100</span><b>' + th(C.nq, 0) + hdDlt(C.nq, pv ? pv.nq : null, pv ? pv.day : '') + '</b></div>' +
+        '<div class="r2"><span>全部持币地址</span><b>' + th(C.nAll, 0) + hdDlt(C.nAll, pv ? pv.nAll : null, pv ? pv.day : '') + '</b></div></div>' +
         '<button class="hr-btn" data-hscan="1">重新扫描全量</button></div>';
 
       var cap = H.radrCap || 1000000000;
@@ -5199,6 +5326,84 @@ window.ENI = window.ENI || {};
         '<div class="note">纯本机试算，不联网、不上传；不构成收益承诺。</div></div>';
 
       return top + nav + cardOv + cardTree + cardBr + cardStack + cardRule;
+    }
+
+    if (H.sub === 'diff') {
+      var pd0 = hdPrev();
+      var C0 = H.calc || { dist: [], nq: 0, nAll: 0 };
+      var bk = hd4(C0), pbk = pd0 && pd0.bins ? pd0.bins : null;
+      var tot = C0.nAll || 0, nq0 = C0.nq || 0, rest = Math.max(0, tot - nq0);
+
+      var dNum = function (cur, prev) {
+        if (!(cur > 0) || prev == null || !isFinite(prev)) return { t: '—', c: 'gray' };
+        var d = cur - prev;
+        var c = d > 0 ? 'up' : (d < 0 ? 'dn' : 'gray');
+        var t = d > 0 ? ('+' + th(d, 0)) : (d < 0 ? ('-' + th(Math.abs(d), 0)) : '±0');
+        return { t: t, c: c };
+      };
+      var tD = dNum(tot, pd0 ? pd0.nAll : null), qD = dNum(nq0, pd0 ? pd0.nq : null);
+      var bday = pd0 ? pd0.day : '';
+
+      var cardA = '<div class="mkcard"><div class="sec-hd"><h2>持币人总数</h2><span class="sub">全池</span></div>' +
+        '<div class="hd-tot"><b>' + (tot ? th(tot, 0) : '—') + '</b><i>个持币地址（含未达 100）</i>' +
+        '<em class="' + tD.c + '">' + (tD.t === '—' ? '较昨日 —' : tD.t + ' 较昨日') + '</em></div>' +
+        '<div class="rows2">' +
+        '<div class="r2"><span>合格 ≥100</span><b class="gold">' + (nq0 ? th(nq0, 0) : '—') + '<em class="' + qD.c + '">' + (qD.t === '—' ? '' : qD.t) + '</em></b></div>' +
+        '<div class="r2"><span>未达 100</span><b>' + (tot ? th(rest, 0) : '—') + '</b></div></div>' +
+        '<div class="note">合格 = 余额 ≥100 EVBC 的地址；未达 100 计入持币人总数，但不进档位统计。</div></div>';
+
+      var BINS = [['100 - 200', 0], ['201 - 500', 1], ['501 - 1,000', 2], ['1,000 以上', 3]];
+      var cells = BINS.map(function (x) {
+        var c = bk[x[1]], pct = nq0 > 0 ? (c / nq0 * 100) : 0;
+        var dd = '较昨日 —', cls = 'gray';
+        if (pbk && isFinite(pbk[x[1]])) {
+          var d = c - pbk[x[1]];
+          cls = d > 0 ? 'up' : (d < 0 ? 'dn' : 'gray');
+          dd = '较昨日 ' + (d > 0 ? '+' : (d < 0 ? '-' : '±')) + th(Math.abs(d), 0);
+        }
+        return '<div><div class="lbl">' + x[0] + '</div>' +
+          '<div class="num">' + (nq0 ? th(c, 0) : '—') + '</div>' +
+          '<div class="pct">占 ' + pct.toFixed(1) + '%</div>' +
+          '<div class="dlt ' + cls + '">' + dd + '</div></div>';
+      }).join('');
+
+      var cardB = '<div class="mkcard"><div class="sec-hd"><h2>打散区间</h2>' +
+        '<span class="sub">合计 ' + (nq0 ? th(nq0, 0) : '—') + ' 个地址</span></div>' +
+        '<div class="hd4">' + cells + '</div>' +
+        '<div class="note">按每个钱包的 EVBC 余额分档，只算 ≥100 的合资格地址。今日档位为全量扫描实测；较昨日对 ' + (bday ? bday.slice(5) : '上一营业日') + ' 的四档人数。</div></div>';
+
+      var MIG = adMigrate();
+      var DLAB = { 1: '100 - 200', 2: '201 - 500', 3: '501 - 1,000', 4: '1,000 以上' };
+      var cardM;
+      if (MIG) {
+        var keys = Object.keys(MIG.rows).sort(function (a, b) { return MIG.rows[b] - MIG.rows[a]; }).slice(0, 12);
+        var mgRows = keys.map(function (k) {
+          var b0 = Number(String(k).split('>')[0]), b1 = Number(String(k).split('>')[1]);
+          var upDir = b1 > b0;
+          return '<div class="mg-row"><span class="mg-k">' + DLAB[b0] + ' → ' + DLAB[b1] + '</span>' +
+            '<span class="mg-v ' + (upDir ? 'up' : 'dn') + '">' + (upDir ? '+' : '-') + th(MIG.rows[k], 0) + '</span></div>';
+        }).join('') || '<div class="empty" style="padding:16px 0">这两天没有跨档移动的地址。</div>';
+        cardM = '<div class="mkcard"><div class="sec-hd"><h2>档位迁移</h2>' +
+          '<span class="sub">' + MIG.day0.slice(5) + ' → ' + MIG.day1.slice(5) + '</span></div>' +
+          '<div class="hd4 mg-top">' +
+          '<div><div class="lbl">升档</div><div class="num up">+' + th(MIG.up, 0) + '</div></div>' +
+          '<div><div class="lbl">降档</div><div class="num dn">-' + th(MIG.dn, 0) + '</div></div>' +
+          '<div><div class="lbl">新进 ≥100</div><div class="num up">+' + th(MIG.addn, 0) + '</div></div>' +
+          '<div><div class="lbl">跌出 &lt;100</div><div class="num dn">-' + th(MIG.drop, 0) + '</div></div>' +
+          '</div>' +
+          '<div class="mg-list">' + mgRows + '</div>' +
+          '<div class="note">逐个地址比对前后两天的档位，只覆盖余额 ≥100 的地址；不足 100 的一侧不单独存，所以「新进」里也含原本就持币但不足 100 的老地址。</div></div>';
+      } else {
+        cardM = '<div class="mkcard"><div class="sec-hd"><h2>档位迁移</h2><span class="sub">待明日</span></div>' +
+          '<div class="empty" style="padding:20px 0">要知道「谁从哪档挪到哪档」，得先有两天各自的地址名单。今天这次扫描已存下今天的名单，明天再扫一次，这里就会出现迁移明细。</div>' +
+          '<div class="note">每份名单只存地址后 16 位和档位，约 0.6 MB，留在本机，不上传。</div></div>';
+      }
+
+      var cardC = '<div class="mkcard"><div class="sec-hd"><h2>口径说明</h2><span class="sub">本机扫描</span></div>' +
+        '<div class="note" style="line-height:1.7">一次全量扫描同时给出：持币人总数、合格地址数、四档分布。' +
+        '较昨日用本机逐日快照做差' + (bday ? '，当前基线 ' + bday.slice(5) : '') + '；只数地址个数，不含金额，不构成投资建议。</div></div>';
+
+      return top + nav + cardA + cardB + cardM + cardC;
     }
 
   };
