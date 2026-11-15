@@ -1559,13 +1559,22 @@ window.ENI = window.ENI || {};
     });
   }
 
-  /* 每日最佳持币区间：优先原生通道（该站不返回 CORS 头） */
+  /* 每日最佳持币区间：优先原生通道（该站不返回 CORS 头）；网页版跨域拿不到时回落到同源 json */
   E.radr = function () {
     var u = radrUrl();
     if (window.ENINativeApi && window.ENINativeApi.start) return nativeGet(u);
     return fetch(u, { cache: 'no-store' }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
+    }).catch(function (e) {
+      var fb = window.RADR_FALLBACK || 'radar-overview.json';
+      return fetch(fb + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r2) {
+        if (!r2.ok) throw new Error('fallback HTTP ' + r2.status);
+        return r2.json();
+      }).then(function (j) {
+        j.__fallback = true;
+        return j;
+      }).catch(function () { throw e; });
     });
   };
 
