@@ -786,6 +786,26 @@ body.holdpage .pairs{display:none}
 .hr-eff .why em{font-style:normal;color:#f2c14e}
 .hr-eff .why b{color:#dbeaf8;font-weight:600}
 
+/* 持仓计算器 */
+.hk-calc .hcin{margin:10px 0 0}
+.hk-calc .hcin input{width:100%;height:42px;border-radius:10px;border:1px solid rgba(64,150,215,.28);
+  background:rgba(9,14,24,.92);color:#eaf4ff;font-family:var(--mono);font-size:16px;font-weight:700;
+  padding:0 12px;outline:none;-webkit-appearance:none}
+.hk-calc .hcin input:focus{border-color:rgba(242,193,78,.55)}
+.hcchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.hcchips button{border:1px solid var(--line2);background:rgba(255,255,255,.028);color:#9aa6b8;
+  font-size:10.5px;padding:5px 9px;border-radius:8px;font-family:inherit;cursor:pointer}
+.hcchips button:active{background:rgba(242,193,78,.12);color:#f2c14e;border-color:rgba(242,193,78,.3)}
+.hcg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}
+.hcg>div{padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05)}
+.hcg i{display:block;font-style:normal;font-size:9.5px;color:#7d93ab;margin-bottom:4px}
+.hcg b{display:block;font-family:var(--mono);font-size:15px;font-weight:700;color:#eaf4ff;line-height:1.2}
+.hcg b.gold{color:var(--gold)}
+.hcg b u{display:inline;text-decoration:none;font-style:normal;font-size:10px;color:#7d93ab;font-weight:400}
+.hcg .wide{grid-column:1/-1}
+.hchint{margin-top:9px;padding:8px 10px;border-radius:8px;font-size:10.5px;line-height:1.65;
+  color:#cfe2f5;background:rgba(64,150,215,.09);border-left:2px solid rgba(242,193,78,.55)}
+
 /* issuance & power card */
 .r2 b.gold{color:var(--gold)}
 .sup-bar{position:relative;height:4px;margin:13px 2px 0;border-radius:3px;background:rgba(64,150,215,.13)}
@@ -1584,7 +1604,8 @@ window.ENI = window.ENI || {};
 
     return { nAll: n, nq: nq, power: power, pool: pool,
              best: best, rng: rng, tiers: tiers, dist: dist,
-             offLo: olo, offHi: ohi, offCnt: offCnt };
+             offLo: olo, offHi: ohi, offCnt: offCnt,
+             lv: asc.slice(start) };
   };
 
   /* ---------- ENI RADR (eni-radr.com) ---------- */
@@ -4876,7 +4897,7 @@ window.ENI = window.ENI || {};
       var raw = localStorage.getItem('radrCalc');
       if (raw) {
         var c0 = JSON.parse(raw);
-        if (c0 && c0.day === day && c0.nq && c0.rng && (Date.now() - (c0.at || 0)) < 43200000) { H.calc = c0; return; }
+        if (c0 && c0.day === day && c0.nq && c0.rng && c0.lv && c0.lv.length && (Date.now() - (c0.at || 0)) < 43200000) { H.calc = c0; return; }
       }
     } catch (e0) {}
     H.calcBusy = true; H.calcTick = 0; H.calcErr = '';
@@ -4952,6 +4973,89 @@ window.ENI = window.ENI || {};
       ' 的位置才是效率顶点，这就是本页算出 <em>' + lab + '</em> 的原因。</div>' +
       '</div>';
   }
+
+  /* ---------- 持仓计算器（纯本地，不上传） ---------- */
+  function hcAt(C, v) {
+    var lv = (C && C.lv) || [], n = lv.length, less = 0;
+    if (n) {
+      var lo = 0, hi = n;
+      while (lo < hi) { var mid = (lo + hi) >> 1; if (lv[mid] < v) lo = mid + 1; else hi = mid; }
+      less = lo;
+    }
+    var m = 1 + less, power = (C && C.power) || 0, pool = (C && C.pool) || 0;
+    var daily = power > 0 ? pool * m / power : 0;
+    return { m: m, daily: daily, per: v > 0 ? daily / v * 100 : 0,
+             share: power > 0 ? m / power * 100 : 0 };
+  }
+
+  function hcPrice() {
+    try { return (E.data && E.data.price) || 0; } catch (e) { return 0; }
+  }
+
+  function hcCrowd(C) {
+    var c = null;
+    (C.dist || []).forEach(function (d) {
+      if (!c || (d.cnt || 0) > c.cnt) c = { lo: d.lo, hi: d.hi, cnt: d.cnt || 0 };
+    });
+    return c;
+  }
+
+  function hcv(x) {
+    var n = Math.round(Number(x) * 100) / 100;
+    return (n % 1 === 0) ? th(n, 0) : n.toFixed(2);
+  }
+
+  function hcChips(C) {
+    var G = (C && C.rng) || {}, cr = hcCrowd(C), list = [['门槛', 100]];
+    if (cr) {
+      var cw = (cr.hi === null || cr.hi === undefined) ? cr.lo : cr.hi;
+      list.push(['拥挤档', Math.floor(cw)]);
+      list.push(['低成本', (Math.floor(cw) + 0.01)]);
+    }
+    if (C && C.offHi) list.push(['官方', C.offHi]);
+    if (G.lo) { list.push(['推荐', G.lo]); if (G.hi > G.lo) list.push(['推荐上限', G.hi]); }
+    return list.map(function (x) {
+      return '<button type="button" data-hcv="' + x[1] + '">' + x[0] + ' ' + hcv(x[1]) + '</button>';
+    }).join('');
+  }
+
+  function hcBody(C, raw) {
+    var v = parseFloat(String(raw).replace(/,/g, '')) || 0;
+    var A = hcAt(C, v), G = (C && C.rng) || {}, px = hcPrice();
+    var usd = (px > 0 && A.daily > 0) ? A.daily * px : 0;
+    var per = A.per.toFixed(3), hint;
+    if (!(v > 0)) hint = '输入你的持仓数量，立刻算出算力、日收益和每枚回报率。';
+    else if (v < 100) hint = '不足 100 EVBC，不计入合格持币池，算力按最低一档计算；先补过门槛才有稳定算力。';
+    else if (A.m <= 5) hint = '刚够门槛 · 算力 M = ' + A.m + '，是全场最低档，日收益几乎为 0；补到最拥挤档位之上，效率才起得来。';
+    else if (G.lo && G.hi && v >= G.lo && v <= G.hi) hint = '就在推荐区间内 · 效率 ' + per + '%/天，接近全场最优，回本速度也最快。';
+    else if (G.hi && v > G.hi) hint = '高于推荐区间 · 每枚日回报 ' + per + '%，仓位偏厚，边际效率在下降。';
+    else if (G.lo && v < G.lo) hint = '低于推荐区间 · 每枚日回报 ' + per + '%，还没越过最拥挤档位，效率还有提升空间。';
+    else hint = '每枚日回报 ' + per + '%。';
+    return '<div class="hcg">' +
+      '<div><i>全网算力占比</i><b>' + A.share.toFixed(4) + '%</b></div>' +
+      '<div><i>持币算力 M</i><b>' + th(A.m, 0) + '</b></div>' +
+      '<div><i>每日收益</i><b class="gold">' + A.daily.toFixed(3) + ' <u>EVBC</u></b></div>' +
+      '<div><i>每枚日回报率</i><b>' + per + '%</b></div>' +
+      (usd > 0 ? '<div class="wide"><i>折合美元</i><b>$' + usd.toFixed(usd < 1 ? 4 : 2) + ' <u>/天</u></b></div>' : '') +
+      '</div><div class="hchint">' + hint + '</div>';
+  }
+
+  E.holdCalc = function (raw) {
+    var H = E.hold, C = H && H.calc, o = document.getElementById('hcOut');
+    if (!o || !C) return;
+    o.innerHTML = hcBody(C, raw);
+  };
+
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t && t.id === 'hcIn') E.holdCalc(t.value);
+  });
+  document.addEventListener('click', function (e) {
+    var b = (e.target && e.target.closest) ? e.target.closest('[data-hcv]') : null;
+    if (!b) return;
+    var v = b.getAttribute('data-hcv'), inp = document.getElementById('hcIn');
+    if (inp) { inp.value = v; E.holdCalc(v); }
+  });
 
   function th(v, d) {
     var x = Number(v);
@@ -5148,6 +5252,13 @@ window.ENI = window.ENI || {};
         '<div class="sup-sum">全网算力总和 <b>' + (C.power / 1e6).toFixed(2) + 'M</b> · 日收益的分母</div>' +
         '<div class="note">总量取链上 totalSupply，随页面一起更新；已发行占比按「当前总量 ÷ 发行上限」计算。</div></div>';
 
+      var defv = G.lo || 100;
+      var cardCalc = '<div class="mkcard hk-calc"><div class="sec-hd"><h2>算一下你自己的持仓</h2><span class="sub">纯本地计算</span></div>' +
+        '<div class="hcin"><input id="hcIn" type="number" inputmode="decimal" step="any" min="0" value="' + defv + '" placeholder="输入持仓数量（EVBC）"></div>' +
+        '<div class="hcchips">' + hcChips(C) + '</div>' +
+        '<div id="hcOut">' + hcBody(C, defv) + '</div>' +
+        '<div class="note">纯本地计算，输入即出结果，不会上传任何数据。算力 M = 1 + 余额严格小于自己的合格地址数；日收益 = 当日持币池 × M ÷ 全网算力总和。</div></div>';
+
       var card3 = '<div class="mkcard"><div class="sec-hd"><h2>收益阶梯</h2><span class="sub">日收益 / 每枚</span></div>' +
         '<div class="hr-list">' + hkTier(C) + '</div>' +
         '<div class="note">金条为每日 EVBC 收益，右列为每枚 EVBC 的日回报率。</div></div>';
@@ -5161,7 +5272,7 @@ window.ENI = window.ENI || {};
         '算力 M = 1 + 余额严格小于自己的合格地址数（≥100 EVBC），日收益 = 当日持币池 × M ÷ 全网算力总和。' +
         '由本机全量扫描实时计算，未做估算，不构成投资建议。</div>';
 
-      return top + nav + card1 + card2 + cardSup + card3 + card4 + card5;
+      return top + nav + card1 + card2 + cardSup + cardCalc + card3 + card4 + card5;
     }
 
   function tpCalc() {
