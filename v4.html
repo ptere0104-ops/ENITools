@@ -769,6 +769,23 @@ body.holdpage .pairs{display:none}
 .hr-legend i.dot{width:10px;height:7px;border-radius:2px;background:linear-gradient(90deg,#f2c14e,#ffe6a8);border:0;
   box-shadow:0 0 6px rgba(242,193,78,.55)}
 
+/* range explainer: 这一档的算力 / 日收益 / 每枚回报 + 与官方区间的差异 */
+.hr-eff{margin:12px 0 2px;padding:10px 11px 11px;border-radius:10px;
+  background:rgba(64,150,215,.07);border:1px solid rgba(64,150,215,.16)}
+.hr-eff .eh{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#8fa4bb}
+.hr-eff .eh b{color:#eaf4ff;font-weight:600}
+.hr-eff .pill{flex:0 0 auto;font-size:9.5px;padding:2px 7px;border-radius:7px;color:#f2c14e;
+  background:rgba(242,193,78,.12);border:1px solid rgba(242,193,78,.3);white-space:nowrap}
+.hr-eff .e3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
+.hr-eff .e3>div{padding:7px 8px;border-radius:8px;background:rgba(255,255,255,.03)}
+.hr-eff .e3 i{display:block;font-style:normal;font-size:9.5px;color:#7d93ab;margin-bottom:3px;white-space:nowrap}
+.hr-eff .e3 b{display:block;font-family:var(--mono);font-size:14px;font-weight:700;color:#eaf4ff;line-height:1.2}
+.hr-eff .e3 b.gold{color:var(--gold)}
+.hr-eff .e3 u{display:block;text-decoration:none;font-style:normal;font-size:9.5px;color:#7d93ab;margin-top:2px}
+.hr-eff .why{margin-top:9px;font-size:10px;line-height:1.7;color:#8fa4bb}
+.hr-eff .why em{font-style:normal;color:#f2c14e}
+.hr-eff .why b{color:#dbeaf8;font-weight:600}
+
 /* issuance & power card */
 .r2 b.gold{color:var(--gold)}
 .sup-bar{position:relative;height:4px;margin:13px 2px 0;border-radius:3px;background:rgba(64,150,215,.13)}
@@ -4904,6 +4921,38 @@ window.ENI = window.ENI || {};
     }).join('');
   }
 
+  // 区间说明：这一档的算力 / 日收益 / 每枚回报，以及「为什么和官方建议不同」
+  function hrWhy(C, G, olo, ohi) {
+    var best = C.best || {}, rng = C.rng || {};
+    var peak = best.v > 0 ? best.v : G.lo;
+    var m = rng.m || 0, daily = rng.daily || 0, per = rng.per || 0;
+    var crowd = null, nq = C.nq || 0;
+    (C.dist || []).forEach(function (d) {
+      if (!crowd || (d.cnt || 0) > crowd.cnt) crowd = { lo: d.lo, hi: d.hi, cnt: d.cnt || 0 };
+    });
+    var lab = G.lo === G.hi ? th(G.lo, 0) : th(G.lo, 0) + ' — ' + th(G.hi, 0);
+    var px = 0;
+    try { px = (E.data && E.data.price) || 0; } catch (e0) { px = 0; }
+    var usd = (px > 0 && daily > 0) ? daily * px : 0;
+    var usdTxt = usd > 0 ? '<u>≈ $' + usd.toFixed(usd < 1 ? 4 : 2) + '</u>' : '';
+
+    var crowdTxt = (crowd && crowd.cnt > 0)
+      ? '<b>' + crowd.lo + ' — ' + (crowd.hi === null ? '以上' : crowd.hi) + ' EVBC</b>（' +
+        th(crowd.cnt, 0) + ' 个地址，占 ' + (nq > 0 ? (crowd.cnt / nq * 100).toFixed(1) : '0') + '%）'
+      : '最拥挤的一档';
+    return '<div class="hr-eff">' +
+      '<div class="eh"><span>在 <b>' + lab + ' EVBC</b> 这一档</span>' +
+      '<span class="pill">效率峰值 ' + th(peak, 0) + ' EVBC</span></div>' +
+      '<div class="e3">' +
+      '<div><i>持币算力</i><b>' + th(m, 0) + '</b></div>' +
+      '<div><i>每日 EVBC</i><b class="gold">' + daily.toFixed(3) + '</b>' + usdTxt + '</div>' +
+      '<div><i>每枚每日</i><b>' + per.toFixed(3) + '%</b></div></div>' +
+      '<div class="why">项目方页面建议 <em>' + th(olo, 0) + ' — ' + th(ohi, 0) + ' EVBC</em>；' +
+      '但算力按排名计算、不按持币数量比例，越过最拥挤档位 ' + crowdTxt +
+      ' 的位置才是效率顶点，这就是本页算出 <em>' + lab + '</em> 的原因。</div>' +
+      '</div>';
+  }
+
   function th(v, d) {
     var x = Number(v);
     if (!isFinite(x)) return '—';
@@ -5073,7 +5122,8 @@ window.ENI = window.ENI || {};
         (owid > 0 ? '<div class="hr-off" style="left:' + opos.toFixed(2) + '%;width:' + owid.toFixed(2) + '%"></div>' : '') +
         '<div class="hr-rng" style="left:' + gpos.toFixed(2) + '%;width:' + gwid.toFixed(2) + '%"></div></div>' +
         '<div class="hr-axis"><span>0</span><span>' + th(maxv, 0) + '</span></div>' +
-        '<div class="hr-legend"><i class="of"></i>官方区间<i class="dot"></i>自算最优区间</div></div>';
+        '<div class="hr-legend"><i class="of"></i>官方区间<i class="dot"></i>自算最优区间</div>' +
+        hrWhy(C, G, olo, ohi) + '</div>';
 
       var tickTxt = H.calcBusy ? ((H.calcTick || 0) + '/' + (H.calcTot || 7)) : '7 批 · 全部成功';
       hdPut(C.nq, C.nAll, C.day || '', hd4(C));
