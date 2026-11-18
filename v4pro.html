@@ -1432,10 +1432,15 @@ window.ENI = window.ENI || {};
   var HOLD_TOK = '0x70348b77227619d4908a0bf43e96a3caa438045f';
 
   E.scanAllHolders = function (onTick) {
-    var pages = [1, 2, 3, 4, 5, 6, 7], done = 0;
-    return Promise.all(pages.map(function (p) {
+    var PER = 10000, BATCH = 4, CAP = 60;
+    var lastP = 0;
+    try { lastP = Number(localStorage.getItem('holdPages') || 0) || 0; } catch (e0) {}
+    var MAXP = Math.max(14, Math.min(CAP, lastP + 3));
+    var started = 0, slots = [], stopped = false;
+
+    function grabPage(p) {
       var u = HOLD_API + '?module=token&action=getTokenHolders&contractaddress=' + HOLD_TOK +
-        '&page=' + p + '&offset=10000';
+        '&page=' + p + '&offset=' + PER;
       function grab(tries) {
         return fetch(u, { cache: 'no-store' }).then(function (r) {
           if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -1446,15 +1451,37 @@ window.ENI = window.ENI || {};
         });
       }
       return grab(2).then(function (txt) {
-        done++;
-        if (onTick) onTick(done, pages.length);
         var out = [], re = /"address":"0x[0-9a-fA-F]+","value":"(\d+)"/g, m;
         while ((m = re.exec(txt)) !== null) out.push(Number(m[1]) / DEC);
-        return out;
+        started++;
+        if (onTick) onTick(started, 0);
+        return { p: p, v: out };
       });
-    })).then(function (arrs) {
-      var all = [];
-      for (var i = 0; i < arrs.length; i++) all = all.concat(arrs[i]);
+    }
+
+    function step(from) {
+      if (stopped || from > MAXP) return Promise.resolve();
+      var ps = [];
+      for (var p = from; p < from + BATCH && p <= MAXP; p++) ps.push(p);
+      return Promise.all(ps.map(grabPage)).then(function (res) {
+        for (var i = 0; i < res.length; i++) {
+          slots[res[i].p] = res[i];
+          if (!res[i].v.length) stopped = true;
+        }
+        return stopped ? Promise.resolve() : step(from + BATCH);
+      });
+    }
+
+    return step(1).then(function () {
+      var all = [], pages = 0;
+      for (var p = 1; p <= MAXP; p++) {
+        var o = slots[p];
+        if (!o || !o.v.length) continue;
+        pages++;
+        for (var i = 0; i < o.v.length; i++) all.push(o.v[i]);
+      }
+      E._holdPages = pages;
+      try { localStorage.setItem('holdPages', String(pages)); } catch (e1) {}
       return all;
     });
   };
@@ -1560,15 +1587,28 @@ window.ENI = window.ENI || {};
   }
 
   /* 每日最佳持币区间：优先原生通道（该站不返回 CORS 头）；网页版跨域拿不到时回落到同源 json */
+  /* 带超时的 fetch：跨域请求被挂起时不再无限等待 */
+  function fetchT(u, ms) {
+    return new Promise(function (res, rej) {
+      var done = false;
+      var to = setTimeout(function () { if (!done) { done = true; rej(new Error('timeout')); } }, ms || 9000);
+      fetch(u, { cache: 'no-store' }).then(function (r) {
+        if (done) return; done = true; clearTimeout(to); res(r);
+      }).catch(function (e) {
+        if (done) return; done = true; clearTimeout(to); rej(e);
+      });
+    });
+  }
+
   E.radr = function () {
     var u = radrUrl();
     if (window.ENINativeApi && window.ENINativeApi.start) return nativeGet(u);
-    return fetch(u, { cache: 'no-store' }).then(function (r) {
+    return fetchT(u, 9000).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     }).catch(function (e) {
-      var fb = window.RADR_FALLBACK || 'radar-overview.json';
-      return fetch(fb + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r2) {
+      var fb = window.RADR_FALLBACK || 'radr-overview.json';
+      return fetchT(fb + '?t=' + Date.now(), 9000).then(function (r2) {
         if (!r2.ok) throw new Error('fallback HTTP ' + r2.status);
         return r2.json();
       }).then(function (j) {
@@ -4819,7 +4859,7 @@ window.ENI = window.ENI || {};
       var raw = localStorage.getItem('radrCalc');
       if (raw) {
         var c0 = JSON.parse(raw);
-        if (c0 && c0.day === day && c0.nq && c0.rng && (Date.now() - (c0.at || 0)) < 43200000) { H.calc = c0; return; }
+        if (c0 && c0.day === day && c0.nq && c0.rng && (Date.now() - (c0.at || 0)) < 600000) { H.calc = c0; return; }
       }
     } catch (e0) {}
     H.calcBusy = true; H.calcTick = 0; H.calcErr = '';
@@ -4827,7 +4867,7 @@ window.ENI = window.ENI || {};
       H.calcTick = d; H.calcTot = t; if (E.rerender) E.rerender();
     }).then(function (vals) {
       var c = E.calcHoldRank(vals, pool, olo, ohi);
-      c.day = day; c.at = Date.now();
+      c.day = day; c.at = Date.now(); c.pages = E._holdPages || 7;
       H.calc = c; H.calcBusy = false;
       try { localStorage.setItem('radrCalc', JSON.stringify(c)); } catch (e1) {}
       if (E.rerender) E.rerender();
@@ -4919,7 +4959,7 @@ window.ENI = window.ENI || {};
 
       if (!C) {
         var st = H.calcBusy
-          ? '正在全量扫描持币地址 ' + (H.calcTick || 0) + ' / ' + (H.calcTot || 7)
+          ? '正在全量扫描持币地址 · 已扫 ' + (H.calcTick || 0) + ' 批'
           : (H.calcErr ? '扫描失败（' + H.calcErr + '）'
             : (H.radrErr ? 'RADR 数据暂不可用（' + H.radrErr + '）' : '准备数据…'));
         return top + nav + '<div class="mkcard hr-card">' + hd +
@@ -4945,7 +4985,12 @@ window.ENI = window.ENI || {};
         '<div class="hr-axis"><span>0</span><span>' + th(maxv, 0) + '</span></div>' +
         '<div class="hr-legend"><i class="of"></i>官方区间<i class="dot"></i>自算最优区间</div></div>';
 
-      var tickTxt = H.calcBusy ? ((H.calcTick || 0) + '/' + (H.calcTot || 7)) : '7 批 · 全部成功';
+      var atTxt = '';
+      if (C.at) {
+        var da = new Date(C.at);
+        atTxt = ' · ' + (da.getHours() < 10 ? '0' : '') + da.getHours() + ':' + (da.getMinutes() < 10 ? '0' : '') + da.getMinutes() + ' 扫描';
+      }
+      var tickTxt = H.calcBusy ? ('扫描中 · 已 ' + (H.calcTick || 0) + ' 批') : ((C.pages || 7) + ' 批 · 全部成功' + atTxt);
       var card2 = '<div class="mkcard"><div class="sec-hd"><h2>全网状态</h2><span class="sub">' + tickTxt + '</span></div>' +
         '<div class="rows2">' +
         '<div class="r2"><span>合格地址 ≥100</span><b>' + th(C.nq, 0) + '</b></div>' +
