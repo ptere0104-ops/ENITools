@@ -6875,6 +6875,9 @@ window.ENI = window.ENI || {};
 
   function copyText(txt, msg, label) {
     msg = msg || '合约地址已复制';
+    try {
+      if (window.ENINativeApi && window.ENINativeApi.copy && window.ENINativeApi.copy(String(txt)) === 'ok') { toast(msg); return; }
+    } catch (e) {}
     var legacy = function () {
       try {
         var ta = document.createElement('textarea');
