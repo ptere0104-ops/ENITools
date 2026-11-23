@@ -1186,6 +1186,18 @@ body.whalepage .pairs{display:none}
 .cs-kv span{display:block;font-size:10.5px;color:var(--tx3)}
 .cs-kv b{display:block;margin-top:3px;font-size:13.5px;color:var(--tx)}
 .cs-kv i{display:block;margin-top:2px;font-size:10px;color:var(--tx3);font-style:normal}
+.cs-kv e{display:block;margin-top:2px;font-size:9.5px;color:var(--tx3);font-style:normal}
+.cs-fseg{display:flex;gap:6px;margin:9px 0 1px}
+.cs-fseg button{flex:0 0 auto;padding:5px 11px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--tx3);font-size:11px}
+.cs-fseg button.on{border-color:rgba(242,193,78,.5);color:var(--gold);background:rgba(242,193,78,.12)}
+.cs-fr{padding:8px 0;border-bottom:1px dashed rgba(120,145,170,.16)}
+.cs-fr:last-child{border-bottom:0}
+.cs-fr .l1{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px}
+.cs-fr .l1 .t{color:var(--tx2);font-size:11px;white-space:nowrap}
+.cs-fr .l1 .q{flex:1;text-align:right;font-weight:700;color:var(--tx);white-space:nowrap}
+.cs-fr .l1 .u{flex:0 0 64px;text-align:right;color:var(--tx3);font-size:11px;white-space:nowrap}
+.cs-fr .l2{margin-top:3px;font-size:10px;color:var(--tx3);font-family:var(--mono)}
+.cs-tag.sell{color:#ff5c7a;background:rgba(255,92,122,.13)}
 
 
 /* algo · ladder (buy price / sell price / tiers) */
@@ -3588,7 +3600,7 @@ window.ENI = window.ENI || {};
      ========================================================= */
   /* ---------- 币源追踪：这个钱包的币从哪来（进出全程 FIFO 归因） ---------- */
   var CS_API = 'https://scan.eni.top/api';
-  var CS = E.cs = { addr: '', draft: '', busy: false, err: '', st: null };
+  var CS = E.cs = { addr: '', draft: '', busy: false, err: '', st: null, filter: 'all' };
 
   function csFetch(qs) {
     return fetch(CS_API + '?' + qs, { cache: 'no-store' }).then(function (r) {
@@ -3619,6 +3631,26 @@ window.ENI = window.ENI || {};
     });
   }
 
+  function csT(ts) {
+    if (!ts) return '—';
+    var d = new Date(ts * 1000), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+  }
+  function csQ(v) {
+    if (!isFinite(v)) return '—';
+    if (v >= 1000) return E.f.num(v);
+    if (v >= 1) return v.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+    return v.toFixed(4);
+  }
+  function csU(v, px) {
+    if (!(px > 0) || !isFinite(v) || v <= 0) return '';
+    var u = v * px;
+    if (u >= 1000) return '$' + E.f.num(u);
+    if (u >= 100) return '$' + u.toFixed(0);
+    if (u >= 0.01) return '$' + u.toFixed(2);
+    return '$<0.01';
+  }
+
   function csAgg(rows, a, p, bal) {
     var pool = p.book || '', seen = {}, flows = [], i;
     for (i = 0; i < rows.length; i++) {
@@ -3626,25 +3658,31 @@ window.ENI = window.ENI || {};
       var k = String(r.hash || '') + '|' + String(r.from || '') + '|' + String(r.to || '') + '|' + String(r.value || '');
       if (seen[k]) continue;
       seen[k] = 1;
-      var f = String(r.from || '').toLowerCase(), t = String(r.to || '').toLowerCase();
-      var q = (Number(r.value) || 0) / 1e18;
-      if (!(q > 0)) continue;
-      var dir = (t === a) ? 1 : ((f === a) ? -1 : 0);
-      if (!dir) continue;
-      flows.push({ ts: Number(r.timeStamp) || 0, dir: dir, from: f, to: t, q: q });
+      var f0 = String(r.from || '').toLowerCase(), t0 = String(r.to || '').toLowerCase();
+      var q0 = (Number(r.value) || 0) / 1e18;
+      if (!(q0 > 0)) continue;
+      var dir0 = (t0 === a) ? 1 : ((f0 === a) ? -1 : 0);
+      if (!dir0) continue;
+      flows.push({ ts: Number(r.timeStamp) || 0, dir: dir0, from: f0, to: t0, q: q0 });
     }
     flows.sort(function (x, y) { return x.ts - y.ts; });
 
     var inTot = 0, inN = 0, outTot = 0, outN = 0, sellTot = 0, sellN = 0, moveTot = 0, moveN = 0, burnTot = 0;
+    var inT0 = 0, inT1 = 0, outT0 = 0, outT1 = 0, c24 = 0, c24in = 0, now = Math.floor(Date.now() / 1000);
     var gIn = {}, que = [];
     for (i = 0; i < flows.length; i++) {
       var fw = flows[i];
+      if (fw.ts >= now - 86400) { c24++; if (fw.dir > 0) c24in++; }
       if (fw.dir > 0) {
         inTot += fw.q; inN++;
+        if (!inT0) inT0 = fw.ts;
+        inT1 = fw.ts;
         gIn[fw.from] = (gIn[fw.from] || 0) + 1;
         que.push({ from: fw.from, q: fw.q });
       } else {
         outTot += fw.q; outN++;
+        if (!outT0) outT0 = fw.ts;
+        outT1 = fw.ts;
         if (fw.to === pool) { sellTot += fw.q; sellN++; }
         else if (/^0x0{40}$/.test(fw.to)) { burnTot += fw.q; }
         else { moveTot += fw.q; moveN++; }
@@ -3670,10 +3708,15 @@ window.ENI = window.ENI || {};
     for (i = 0; i < src.length; i++) src[i].nIn = gIn[src[i].from] || 0;
     var poolLeft = 0;
     for (i = 0; i < src.length; i++) if (src[i].from === pool) poolLeft += src[i].q;
+    var fl = [];
+    for (i = flows.length - 1; i >= 0 && fl.length < 60; i--) {
+      fl.push({ ts: flows[i].ts, d: flows[i].dir, cp: flows[i].dir > 0 ? flows[i].from : flows[i].to, q: flows[i].q });
+    }
     return {
       addr: a, bal: bal, inTot: inTot, inN: inN, outTot: outTot, outN: outN,
       sellTot: sellTot, sellN: sellN, moveTot: moveTot, moveN: moveN, burnTot: burnTot,
-      list: src, left: left, covered: rows.length, poolLeft: poolLeft
+      list: src, left: left, covered: rows.length, poolLeft: poolLeft,
+      inT0: inT0, inT1: inT1, outT0: outT0, outT1: outT1, c24: c24, c24in: c24in, fl: fl
     };
   }
 
@@ -3700,7 +3743,8 @@ window.ENI = window.ENI || {};
   };
 
   function chainCoinSrc() {
-    var c = CS, p = E.PAIRS[E.activePair] || {}, f = E.f;
+    var c = CS, p = E.PAIRS[E.activePair] || {}, f = E.f, px = (E.data && E.data.price) || 0;
+    var pool = p.book || '';
     var head = '<div class="wr-hd" style="margin-top:12px"><h2>币源追踪 · ' + p.base + '</h2>' +
       '<span class="r">查这个钱包的币从哪来</span></div>';
     var form = '<div class="cs-in-wrap">' +
@@ -3711,38 +3755,73 @@ window.ENI = window.ENI || {};
     else if (c.err) body = '<div class="cs-empty">' + c.err + '</div>';
     else if (!c.st) body = '<div class="cs-empty">粘贴地址后点查询：把转入、卖出、转出按时间顺序对冲，算出手上这些币分别来自哪里。</div>';
     else {
-      var st = c.st;
-      var leftPct = st.left > 0 ? (st.poolLeft / st.left * 100) : 0;
+      var st = c.st, gap = 0;
+      if (st.inN > 1 && st.inT1 > st.inT0) gap = (st.inT1 - st.inT0) / 60 / (st.inN - 1);
       var kv = '<div class="cs-kv">' +
-        '<div><span>总转入</span><b>' + f.num(st.inTot) + '</b><i>' + st.inN + ' 笔</i></div>' +
-        '<div><span>总转出</span><b>' + f.num(st.outTot) + '</b><i>卖出 ' + f.num(st.sellTot) + ' · 转出 ' + f.num(st.moveTot) + '</i></div>' +
-        '<div><span>链上现持</span><b>' + f.num(st.bal) + '</b><i>按记录推算 ' + f.num(st.left) + '</i></div>' +
+        '<div><span>总转入</span><b>' + f.num(st.inTot) + '</b>' +
+        '<i>' + st.inN + ' 笔' + (px > 0 ? ' · ≈' + csU(st.inTot, px) : '') + '</i>' +
+        '<e>' + (st.inT0 ? csT(st.inT0) + ' 起' : '—') + '</e></div>' +
+        '<div><span>总转出</span><b>' + f.num(st.outTot) + '</b>' +
+        '<i>卖 ' + f.num(st.sellTot) + ' · 转 ' + f.num(st.moveTot) + '</i>' +
+        '<e>' + (st.outT1 ? csT(st.outT1) + ' 止' : '—') + '</e></div>' +
+        '<div><span>链上现持</span><b>' + f.num(st.bal) + '</b>' +
+        '<i>' + (px > 0 ? '≈' + csU(st.bal, px) : '—') + '</i>' +
+        '<e>按记录推算 ' + f.num(st.left) + '</e></div>' +
         '</div>';
       var warn = '';
       if (st.bal > 0 && Math.abs(st.left - st.bal) / st.bal > 0.1) {
         warn = '<div class="cs-line" style="color:#ff5c7a">推算剩余与链上余额差得多，说明记录没取全（可能是更早的转账或跨链进来的币），下面的占比只代表已取到的部分。</div>';
       }
       var line = '<div class="cs-line">手上这 ' + f.num(st.left) + ' ' + p.base + ' 里，交易对买入占 ' +
-        leftPct.toFixed(1) + '%，其他地址转入占 ' + (100 - leftPct).toFixed(1) + '%。</div>';
+        (st.left > 0 ? (st.poolLeft / st.left * 100).toFixed(1) : '0.0') + '%，其他地址转入占 ' +
+        (st.left > 0 ? (100 - st.poolLeft / st.left * 100).toFixed(1) : '0.0') + '%。</div>';
+      var act = '<div class="cs-line">平均单笔 ' + csQ(st.inN ? st.inTot / st.inN : 0) + ' ' + p.base +
+        (gap > 0 ? ' · 平均间隔 ' + (gap >= 90 ? (gap / 60).toFixed(1) + ' 小时' : Math.max(1, Math.round(gap)) + ' 分钟') : '') +
+        ' · 24h 内 ' + st.c24 + ' 笔（买 ' + st.c24in + '）</div>';
       var rowsHtml = st.list.slice(0, 12).map(function (x) {
-        var isPool = x.from === (p.book || '');
-        var isMint = /^0x0{40}$/.test(x.from);
+        var isPool = x.from === pool, isMint = /^0x0{40}$/.test(x.from);
         var cls = isPool ? 'buy' : (isMint ? 'mint' : 'wt');
         var tag = isPool ? '交易对买入' : (isMint ? '铸造' : '地址转入');
         var pct = st.left > 0 ? (x.q / st.left * 100) : 0;
         return '<div class="cs-row"><div class="cs-t"><b class="cs-tag ' + cls + '">' + tag + '</b>' +
           '<span class="cs-ad">' + (isPool ? (p.base + '/' + p.quote + ' 交易对') : '<b class="ad-cp" data-cp="' + x.from + '">' + f.addr(x.from) + '</b>') + '</span></div>' +
-          '<div class="cs-n"><i>剩 ' + f.num(x.q) + ' ' + p.base + '</i><u>' + (pct >= 1 ? pct.toFixed(0) : pct.toFixed(1)) +
+          '<div class="cs-n"><i>剩 ' + csQ(x.q) + ' ' + p.base + '</i><u>' + (pct >= 1 ? pct.toFixed(0) : pct.toFixed(1)) +
           '% · 转入 ' + x.nIn + ' 笔</u></div>' +
           '<div class="cs-bar"><i style="width:' + Math.max(2, Math.min(100, pct)).toFixed(0) + '%;background:' +
           (isPool ? '#26e894' : (isMint ? '#8ce8f9' : '#f2c14e')) + '"></i></div></div>';
       }).join('');
       var more = st.list.length > 12 ? '<div class="cs-empty" style="padding:8px 0">还有 ' + (st.list.length - 12) + ' 个来源没展开</div>' : '';
       var none = st.list.length ? '' : '<div class="cs-empty" style="padding:10px 0">这个地址在这条交易对上没有余额，全部卖完或转走了。</div>';
-      body = kv + warn + line + '<div class="ad-hd"><span>剩余持仓来源</span><b>数量 / 占比</b></div>' + rowsHtml + more + none;
+      var filt = c.filter || 'all';
+      var seg = '<div class="cs-fseg">' + ['all', 'buy', 'sell'].map(function (k) {
+        var lab = k === 'all' ? '全部' : (k === 'buy' ? '只看买入' : '只看卖出');
+        return '<button data-csf="' + k + '"' + (filt === k ? ' class="on"' : '') + '>' + lab + '</button>';
+      }).join('') + '</div>';
+      var fr = (st.fl || []).filter(function (x) {
+        if (filt === 'buy') return x.d > 0 && x.cp === pool;
+        if (filt === 'sell') return x.d < 0 && x.cp === pool;
+        return true;
+      }).slice(0, 12).map(function (x) {
+        var isBuy = x.d > 0 && x.cp === pool, isSell = x.d < 0 && x.cp === pool;
+        var isMint = x.d > 0 && /^0x0{40}$/.test(x.cp);
+        var cls = isBuy ? 'buy' : (isSell ? 'sell' : (isMint ? 'mint' : 'wt'));
+        var tag = isBuy ? '买入' : (isSell ? '卖出' : (isMint ? '铸造' : (x.d > 0 ? '转入' : '转出')));
+        return '<div class="cs-fr"><div class="l1">' +
+          '<b class="cs-tag ' + cls + '">' + tag + '</b>' +
+          '<span class="t">' + csT(x.ts) + '</span>' +
+          '<span class="q">' + (x.d > 0 ? '+' : '-') + csQ(x.q) + '</span>' +
+          '<span class="u">' + (csU(x.q, px) || '—') + '</span></div>' +
+          '<div class="l2">' + (isBuy || isSell ? (p.base + '/' + p.quote + ' 交易对') :
+            '<b class="ad-cp" data-cp="' + x.cp + '">' + f.addr(x.cp) + '</b>') + '</div></div>';
+      }).join('') || '<div class="cs-empty" style="padding:10px 0">这个筛选下没有记录</div>';
+      body = kv + warn + line + act +
+        '<div class="ad-hd"><span>剩余持仓来源</span><b>数量 / 占比</b></div>' + rowsHtml + more + none +
+        '<div class="ad-hd" style="margin-top:12px"><span>最近流水</span><b>' +
+        (px > 0 ? '金额按现价 $' + (px >= 1 ? px.toFixed(4) : px.toPrecision(4)) : '数量') + '</b></div>' +
+        seg + fr;
     }
     return '<div class="sec"><div class="wr-card ad-card">' + head + form + body +
-      '<div class="wr-note">数据源 scan.eni.top 的代币转账记录，逐页取到 2000 条上限。转入按时间排队，卖出/转出按先进先出扣减，剩下的就是手上这些币的来源——卖出到交易对算卖出，转给别的地址算转出。跨链进来的币链上查不到，会体现成推算与现持的差额。</div>' +
+      '<div class="wr-note">数据源 scan.eni.top 的代币转账记录，逐页取到 2000 条上限。转入按时间排队，卖出/转出按先进先出扣减，剩下的就是手上这些币的来源——卖出到交易对算卖出，转给别的地址算转出。金额按当前价折算，不是成交当时的价；跨链进来的币链上查不到，会体现成推算与现持的差额。</div>' +
       '</div></div>';
   }
 
@@ -7630,10 +7709,17 @@ window.ENI = window.ENI || {};
     if (tg && tg.id === 'v4csaddr' && E.cs) E.cs.draft = tg.value;
   });
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-cp],[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
+    var t = e.target.closest('[data-cp],[data-csf],[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
     if (!t) return;
 
     if (t.dataset.cp) { copyText(t.dataset.cp, '地址已复制', t.dataset.cp); return; }
+    if (t.dataset.csf) {
+      var fsy = window.scrollY || 0;
+      E.cs.filter = t.dataset.csf;
+      if (E.rerender) E.rerender();
+      setTimeout(function () { window.scrollTo(0, fsy); }, 0);
+      return;
+    }
     if (t.dataset.fanopen) { fanShow(true); return; }
     if (t.dataset.fanclose) { fanShow(false); return; }
     if (t.dataset.fan) {
