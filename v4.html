@@ -1159,6 +1159,27 @@ body.whalepage .pairs{display:none}
 .ad-net.down{color:#ff5c7a}
 .ad-net.pct{color:#9fb3c8;font-weight:600}
 .ad-net.gold{color:#f2c14e}
+.cs-in-wrap{display:flex;gap:7px;margin:12px 0 4px}
+.cs-in{flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;color:var(--tx);font-size:12px;padding:9px 10px;outline:none}
+.cs-in::placeholder{color:var(--tx3)}
+.cs-go{border:1px solid rgba(242,193,78,.45);background:rgba(242,193,78,.14);color:var(--gold);font-size:12px;font-weight:600;border-radius:8px;padding:0 14px;cursor:pointer}
+.cs-go:active{opacity:.75}
+.cs-line{margin:10px 0 2px;font-size:11.5px;color:var(--tx2);line-height:1.6}
+.cs-row{padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.cs-row:last-child{border-bottom:0}
+.cs-t{display:flex;align-items:center;gap:6px}
+.cs-tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;white-space:nowrap}
+.cs-tag.buy{color:#26e894;background:rgba(38,232,148,.13)}
+.cs-tag.wt{color:#f2c14e;background:rgba(242,193,78,.13)}
+.cs-tag.mint{color:#8ce8f9;background:rgba(140,232,249,.13)}
+.cs-ad{font-size:11.5px;color:var(--tx2)}
+.cs-n{display:flex;justify-content:space-between;margin-top:5px;font-size:11.5px}
+.cs-n i{color:var(--tx);font-style:normal;font-weight:600}
+.cs-n u{color:var(--tx3);text-decoration:none}
+.cs-bar{margin-top:5px;height:4px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden}
+.cs-bar i{display:block;height:100%;border-radius:2px}
+.cs-empty{padding:26px 0;text-align:center;color:var(--tx3);font-size:12px;line-height:1.7}
+
 
 /* algo · ladder (buy price / sell price / tiers) */
 .lad-in2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -3558,15 +3579,124 @@ window.ENI = window.ENI || {};
   /* =========================================================
      03 链上
      ========================================================= */
+  /* ---------- 币源追踪：这个钱包的币从哪来 ---------- */
+  var CS_API = 'https://scan.eni.top/api';
+  var CS = E.cs = { addr: '', busy: false, err: '', st: null };
+
+  function csFetch(qs) {
+    return fetch(CS_API + '?' + qs, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.json();
+    });
+  }
+
+  function csLoad(addr) {
+    var p = E.PAIRS[E.activePair] || {}, tok = p.token, a = String(addr).toLowerCase();
+    if (!tok) return Promise.reject(new Error('当前交易对是原生币，暂不支持来源追踪'));
+    var qs = 'contractaddress=' + tok + '&address=' + a;
+    var balP = csFetch('module=account&action=tokenbalance&' + qs)
+      .then(function (d) { return (Number(d.result) || 0) / 1e18; })
+      .catch(function () { return 0; });
+    var pages = [1, 2, 3].map(function (pg) {
+      return csFetch('module=account&action=tokentx&' + qs + '&page=' + pg + '&offset=200&sort=desc')
+        .then(function (d) { return d.result || []; })
+        .catch(function () { return []; });
+    });
+    return Promise.all([balP].concat(pages)).then(function (ar) {
+      var bal = ar[0], rows = [], i;
+      for (i = 1; i < ar.length; i++) rows = rows.concat(ar[i]);
+      var seen = {}, list = [];
+      for (i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        if (String(r.to || '').toLowerCase() !== a) continue;
+        var k = String(r.hash || '') + '|' + String(r.from || '') + '|' + String(r.value || '');
+        if (seen[k]) continue;
+        seen[k] = 1;
+        list.push({ from: String(r.from || '').toLowerCase(), q: (Number(r.value) || 0) / 1e18, ts: Number(r.timeStamp) || 0 });
+      }
+      var g = {}, total = 0;
+      for (i = 0; i < list.length; i++) {
+        var t = list[i];
+        total += t.q;
+        if (!g[t.from]) g[t.from] = { from: t.from, q: 0, n: 0, last: 0 };
+        g[t.from].q += t.q; g[t.from].n++;
+        if (t.ts > g[t.from].last) g[t.from].last = t.ts;
+      }
+      var src = Object.keys(g).map(function (kk) { return g[kk]; })
+        .sort(function (x, y) { return y.q - x.q; });
+      var pool = 0;
+      for (i = 0; i < src.length; i++) if (src[i].from === (p.book || '')) pool += src[i].q;
+      return { addr: a, bal: bal, total: total, list: src, n: list.length, covered: rows.length, pool: pool };
+    });
+  }
+
+  E.csGo = function (addr) {
+    var a = String(addr || '').trim().toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(a)) { if (E.toast) E.toast('地址格式不对，要 0x 开头的 40 位'); return; }
+    CS.addr = a; CS.busy = true; CS.err = ''; CS.st = null;
+    E.ui.chainSub = 'src';
+    if (E.rerender) E.rerender();
+    window.scrollTo(0, 0);
+    csLoad(a).then(function (st) {
+      if (CS.addr !== a) return;
+      CS.st = st; CS.busy = false;
+      if (E.rerender) E.rerender();
+    }).catch(function (e) {
+      if (CS.addr !== a) return;
+      CS.busy = false; CS.err = (e && e.message) || '查询失败';
+      if (E.rerender) E.rerender();
+    });
+  };
+
+  function chainCoinSrc() {
+    var c = CS, p = E.PAIRS[E.activePair] || {}, f = E.f;
+    var head = '<div class="wr-hd" style="margin-top:12px"><h2>币源追踪 · ' + p.base + '</h2>' +
+      '<span class="r">查这个钱包的币从哪来</span></div>';
+    var form = '<div class="cs-in-wrap">' +
+      '<input id="v4csaddr" class="cs-in" placeholder="粘贴钱包地址 0x…" value="' + (c.addr || '') + '">' +
+      '<button class="cs-go" data-csgo="1">查询</button></div>';
+    var body;
+    if (c.busy) body = '<div class="cs-empty">读取链上转账记录…</div>';
+    else if (c.err) body = '<div class="cs-empty">' + c.err + '</div>';
+    else if (!c.st) body = '<div class="cs-empty">粘贴地址后点查询：只看当前交易对代币的转入，区分「交易对买入」和「别的地址转来」。</div>';
+    else {
+      var st = c.st;
+      var poolPct = st.total > 0 ? st.pool / st.total * 100 : 0;
+      var sum = '<div class="rk-sum"><span>共 ' + st.n + ' 笔转入 · 覆盖最近 ' + st.covered + ' 条记录</span>' +
+        '<b>当前持有 ' + f.num(st.bal) + ' ' + p.base + '</b></div>';
+      var line = '<div class="cs-line">交易对买入占 ' + poolPct.toFixed(1) + '%，其余 ' + (100 - poolPct).toFixed(1) +
+        '% 来自其他地址（可能是平台提币、团队或朋友）</div>';
+      var rowsHtml = st.list.slice(0, 12).map(function (x) {
+        var isPool = x.from === (p.book || '');
+        var isMint = /^0x0{40}$/.test(x.from);
+        var cls = isPool ? 'buy' : (isMint ? 'mint' : 'wt');
+        var tag = isPool ? '交易对买入' : (isMint ? '铸造' : '地址转入');
+        var pct = st.total > 0 ? (x.q / st.total * 100) : 0;
+        return '<div class="cs-row"><div class="cs-t"><b class="cs-tag ' + cls + '">' + tag + '</b>' +
+          '<span class="cs-ad">' + (isPool ? (p.base + '/' + p.quote + ' 交易对') : f.addr(x.from)) + '</span></div>' +
+          '<div class="cs-n"><i>' + f.num(x.q) + ' ' + p.base + '</i><u>' + (pct >= 1 ? pct.toFixed(0) : pct.toFixed(1)) +
+          '% · ' + x.n + ' 笔</u></div>' +
+          '<div class="cs-bar"><i style="width:' + Math.max(2, Math.min(100, pct)).toFixed(0) + '%;background:' +
+          (isPool ? '#26e894' : (isMint ? '#8ce8f9' : '#f2c14e')) + '"></i></div></div>';
+      }).join('');
+      var more = st.list.length > 12 ? '<div class="cs-empty" style="padding:8px 0">还有 ' + (st.list.length - 12) + ' 个来源没展开</div>' : '';
+      body = sum + line + '<div class="ad-hd"><span>来源</span><b>数量 / 占比</b></div>' + rowsHtml + more;
+    }
+    return '<div class="sec"><div class="wr-card ad-card">' + head + form + body +
+      '<div class="wr-note">数据源 scan.eni.top 的代币转账记录（每页 200 条，取最近 3 页）。来自交易对地址的转入＝在 DEX 买入；来自其他地址的转入＝别人转给你的，工具不判断对方身份。只统计转入，卖出与转出不计；跨链进来的币链上查不到。</div>' +
+      '</div></div>';
+  }
+
   E.renderChain = function () {
     var sub = UI.chainSub;
     var seg = '<div class="seg">' +
-      [['whale', '鲸鱼监控'], ['hold', '鲸鱼排行'], ['addr', '地址追踪']].map(function (x) {
+      [['whale', '鲸鱼监控'], ['hold', '鲸鱼排行'], ['addr', '地址追踪'], ['src', '币源追踪']].map(function (x) {
         return '<button data-csub="' + x[0] + '" class="' + (sub === x[0] ? 'on' : '') + '">' + x[1] + '</button>';
       }).join('') + '</div>';
 
     if (sub === 'whale') return seg + chainWhale();
     if (sub === 'hold') return seg + chainHold();
+    if (sub === 'src') return seg + chainCoinSrc();
     return seg + chainAddr();
   };
 
@@ -7434,7 +7564,7 @@ window.ENI = window.ENI || {};
     if (E.tpCalc) E.tpCalc();
   });
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
+    var t = e.target.closest('[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
     if (!t) return;
 
     if (t.dataset.fanopen) { fanShow(true); return; }
@@ -7553,6 +7683,12 @@ window.ENI = window.ENI || {};
     if (t.dataset.day) { jumpDay(parseInt(t.dataset.day, 10)); return; }
     if (t.dataset.ind) { E.ui.ind = t.dataset.ind; render(); return; }
     if (t.dataset.wmore) { E.ui.whaleMore = !E.ui.whaleMore; render(); return; }
+
+    if (t.dataset.csgo) {
+      var csi = document.getElementById('v4csaddr');
+      if (E.csGo) E.csGo(csi ? csi.value : '');
+      return;
+    }
     if (t.dataset.csub) { E.ui.chainSub = t.dataset.csub; render(); return; }
     if (t.dataset.btf) { E.ui.rankTf = t.dataset.btf; render(); return; }
     if (t.dataset.atab) { E.ui.addrTab = t.dataset.atab; E.ui.adrScroll = 0; render(); return; }
