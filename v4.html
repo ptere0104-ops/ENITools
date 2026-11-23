@@ -1153,10 +1153,12 @@ body.whalepage .pairs{display:none}
 .ad-bs .buy{flex:1;min-width:0;color:#2fe6a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ad-bs .sell{flex:1;min-width:0;text-align:right;color:#ff5c7a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ad-bs.solo .buy{font-size:11px}
+.ad-bs.solo .sell{font-size:11px;text-align:left}
 .ad-net{flex:0 0 auto;font-family:var(--mono);font-size:11.5px;font-weight:700;padding-top:1px}
 .ad-net.up{color:#26e894}
 .ad-net.down{color:#ff5c7a}
 .ad-net.pct{color:#9fb3c8;font-weight:600}
+.ad-net.gold{color:#f2c14e}
 
 /* algo · ladder (buy price / sell price / tiers) */
 .lad-in2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -4391,30 +4393,42 @@ window.ENI = window.ENI || {};
     var rows = [];
     for (var k in acc) {
       var v = acc[k];
+      var avgB = v.bq > 0 ? v.bu / v.bq : 0, avgS = v.sq > 0 ? v.su / v.sq : 0;
       rows.push({ a: k, bq: v.bq, bu: v.bu, bn: v.bn, sq: v.sq, su: v.su, sn: v.sn,
+        avgB: avgB, avgS: avgS,
+        loss: (v.sq > 0 && v.bq > 0 && avgB > avgS) ? (avgB - avgS) * v.sq : 0,
         net: v.su * 0.98 - v.bu });
     }
-    rows = rows.filter(function (x) { return x.bu + x.su >= 1; });
+    rows = rows.filter(function (x) {
+      if (tab === 'loss') return x.sq > 0 && x.net < 0;
+      return x.bu + x.su >= 1;
+    });
     rows.sort(function (x, y) {
+      if (tab === 'loss') return x.net - y.net;
       return (tab === 'sell' ? (y.su - x.su) : (y.bu - x.bu)) || ((y.su + y.bu) - (x.su + x.bu));
     });
     rows = rows.slice(0, 100);
 
     var tabs = '<div class="rk-tf ad-tabs">' +
       '<button data-atab="sell" class="' + (tab === 'sell' ? 'on' : '') + '">卖出最多</button>' +
-      '<button data-atab="buy" class="' + (tab === 'buy' ? 'on' : '') + '">买入最多</button></div>';
+      '<button data-atab="buy" class="' + (tab === 'buy' ? 'on' : '') + '">买入最多</button>' +
+      '<button data-atab="loss" class="' + (tab === 'loss' ? 'on' : '') + '">卖出亏损</button></div>';
 
     var aU = function (v) {
       var av = Math.abs(v);
-      if (av >= 1000) return f.usd(v);
+      if (av >= 1000) return f.usd(av);
       if (av >= 1) return '$' + Math.round(av);
       return '$' + av.toFixed(2);
     };
     var body = rows.map(function (x, idx) {
       var net = x.net;
       var isBuy = tab === 'buy';
-      var cls = isBuy ? 'up' : (net > 0 ? 'up' : (net < 0 ? 'down' : ''));
-      var rt = isBuy ? aU(x.bu) : ((net > 0 ? '+' : (net < 0 ? '-' : '')) + aU(net));
+      var isLoss = tab === 'loss';
+      var hold = !isBuy && !isLoss && x.su <= 0 && x.bu > 0;
+      var cls = isBuy ? 'up' : (hold ? 'gold' : (isLoss ? 'down' : (net > 0 ? 'up' : (net < 0 ? 'down' : ''))));
+      var rt = isBuy ? aU(x.bu)
+        : (hold ? f.usd(x.bu)
+        : (isLoss ? ('-' + aU(net)) : ((net > 0 ? '+' : (net < 0 ? '-' : '')) + aU(net))));
       var btxt = x.bu > 0
         ? '买 ' + f.px(x.bu / x.bq, p.dp) + ' · ' + f.num(x.bq * 0.98) + ' · ' + aU(x.bu)
         : '买 —';
@@ -4429,10 +4443,10 @@ window.ENI = window.ENI || {};
         '<b class="ad-net ' + cls + '">' + rt + '</b></div>';
     }).join('') || '<div class="empty">24h 内没有地址成交</div>';
 
-    var head = '<div class="wr-hd" style="margin-top:12px"><h2>' + (tab === 'sell' ? '卖出最多' : '买入最多') +
+    var head = '<div class="wr-hd" style="margin-top:12px"><h2>' + (tab === 'sell' ? '卖出最多' : (tab === 'loss' ? '卖出亏损' : '买入最多')) +
       ' · ' + p.base + '</h2><span class="r">全池成交额 ' + f.usd(totalUsd) + '</span></div>';
-    var sub = '<div class="rk-sum"><span>共 ' + rows.length + ' 个地址 · 上下滑动查看</span><b>' + (tab === 'buy' ? '24h 买入花费（扣费后）' : '24h 现金盈亏（扣费后）') + '</b></div>';
-    var cols = '<div class="ad-hd"><span>地址</span><b>' + (tab === 'sell' ? '卖出额排序' : '买入额排序') + '</b></div>';
+    var sub = '<div class="rk-sum"><span>共 ' + rows.length + ' 个地址 · 上下滑动查看</span><b>' + (tab === 'buy' ? '24h 买入花费（扣费后）' : (tab === 'loss' ? '24h 现金净亏（扣费后）' : '24h 现金盈亏（扣费后）')) + '</b></div>';
+    var cols = '<div class="ad-hd"><span>地址</span><b>' + (tab === 'loss' ? '净额排序' : (tab === 'sell' ? '卖出额排序' : '买入额排序')) + '</b></div>';
 
     return '<div class="sec"><div class="wr-card ad-card">' +
       tabs + head + sub + cols +
@@ -4442,8 +4456,11 @@ window.ENI = window.ENI || {};
       ' 买入扣币 2%，卖出扣钱按链上实测（官方每周二降 1%，降到 2% 为止）；ENI 买卖各 0.2%。' +
       (tab === 'buy'
         ? '每行是买入（价 · 到手币 · 花掉的钱），右上角是它 24h 的买入花费合计；买入榜只看买入，不列卖出与净收支。'
-        : '每行左绿是买入（价 · 到手币 · 花掉的钱），右红是卖出（价 · 交出的币 · 收到的钱），右上角是两者相抵后的现金盈亏。') +
-      '按成交额排序，榜内可上下滑动。数据源为当前交易对 24h 撮合里的主动方（taker），不做全链扫描。</div>' +
+        : (tab === 'loss'
+          ? '只列有卖出、且现金净额为负的地址；右上角就是卖出的钱（扣 2% 后）减买入花掉的钱，是现金净流出，含还没卖完那部分压在持仓里的成本，不等于已实现亏损。'
+          : '每行左绿是买入（价 · 到手币 · 花掉的钱），右红是卖出（价 · 交出的币 · 收到的钱），右上角是两者相抵后的现金盈亏。')) +
+      (tab === 'loss' ? '按现金净额从亏到赚排序，榜内可上下滑动。' : '按成交额排序，榜内可上下滑动。') +
+      '数据源为当前交易对 24h 撮合里的主动方（taker），不做全链扫描。</div>' +
       '</div></div>';
   }
 
