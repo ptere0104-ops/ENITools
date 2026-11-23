@@ -1198,6 +1198,11 @@ body.whalepage .pairs{display:none}
 .cs-fr .l1 .u{flex:0 0 64px;text-align:right;color:var(--tx3);font-size:11px;white-space:nowrap}
 .cs-fr .l2{margin-top:3px;font-size:10px;color:var(--tx3);font-family:var(--mono)}
 .cs-tag.sell{color:#ff5c7a;background:rgba(255,92,122,.13)}
+.cs-an{margin-top:8px;padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.025)}
+.cs-an p{margin:0;font-size:12.5px;line-height:1.7;color:var(--tx)}
+.cs-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.cs-an .cre{margin-top:8px;font-size:10px;color:var(--tx3);line-height:1.65}
+.cs-tag.gray{color:#9fb3c8;background:rgba(159,179,200,.13)}
 
 
 /* algo · ladder (buy price / sell price / tiers) */
@@ -3636,6 +3641,14 @@ window.ENI = window.ENI || {};
     var d = new Date(ts * 1000), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
     return p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
   }
+  function csAgo(ts) {
+    if (!ts) return '—';
+    var d = Math.floor(Date.now() / 1000) - ts;
+    if (d < 60) return '刚刚';
+    if (d < 3600) return Math.floor(d / 60) + ' 分钟前';
+    if (d < 86400) return Math.floor(d / 3600) + ' 小时前';
+    return Math.floor(d / 86400) + ' 天前';
+  }
   function csQ(v) {
     if (!isFinite(v)) return '—';
     if (v >= 1000) return E.f.num(v);
@@ -3668,11 +3681,11 @@ window.ENI = window.ENI || {};
     flows.sort(function (x, y) { return x.ts - y.ts; });
 
     var inTot = 0, inN = 0, outTot = 0, outN = 0, sellTot = 0, sellN = 0, moveTot = 0, moveN = 0, burnTot = 0;
-    var inT0 = 0, inT1 = 0, outT0 = 0, outT1 = 0, c24 = 0, c24in = 0, now = Math.floor(Date.now() / 1000);
+    var inT0 = 0, inT1 = 0, outT0 = 0, outT1 = 0, c24 = 0, c24in = 0, c24inQ = 0, c24outQ = 0, now = Math.floor(Date.now() / 1000);
     var gIn = {}, que = [];
     for (i = 0; i < flows.length; i++) {
       var fw = flows[i];
-      if (fw.ts >= now - 86400) { c24++; if (fw.dir > 0) c24in++; }
+      if (fw.ts >= now - 86400) { c24++; if (fw.dir > 0) { c24in++; c24inQ += fw.q; } else { c24outQ += fw.q; } }
       if (fw.dir > 0) {
         inTot += fw.q; inN++;
         if (!inT0) inT0 = fw.ts;
@@ -3716,7 +3729,7 @@ window.ENI = window.ENI || {};
       addr: a, bal: bal, inTot: inTot, inN: inN, outTot: outTot, outN: outN,
       sellTot: sellTot, sellN: sellN, moveTot: moveTot, moveN: moveN, burnTot: burnTot,
       list: src, left: left, covered: rows.length, poolLeft: poolLeft,
-      inT0: inT0, inT1: inT1, outT0: outT0, outT1: outT1, c24: c24, c24in: c24in, fl: fl
+      inT0: inT0, inT1: inT1, outT0: outT0, outT1: outT1, c24: c24, c24in: c24in, c24inQ: c24inQ, c24outQ: c24outQ, fl: fl
     };
   }
 
@@ -3775,9 +3788,48 @@ window.ENI = window.ENI || {};
       var line = '<div class="cs-line">手上这 ' + f.num(st.left) + ' ' + p.base + ' 里，交易对买入占 ' +
         (st.left > 0 ? (st.poolLeft / st.left * 100).toFixed(1) : '0.0') + '%，其他地址转入占 ' +
         (st.left > 0 ? (100 - st.poolLeft / st.left * 100).toFixed(1) : '0.0') + '%。</div>';
-      var act = '<div class="cs-line">平均单笔 ' + csQ(st.inN ? st.inTot / st.inN : 0) + ' ' + p.base +
-        (gap > 0 ? ' · 平均间隔 ' + (gap >= 90 ? (gap / 60).toFixed(1) + ' 小时' : Math.max(1, Math.round(gap)) + ' 分钟') : '') +
-        ' · 24h 内 ' + st.c24 + ' 笔（买 ' + st.c24in + '）</div>';
+      var nowS = Math.floor(Date.now() / 1000);
+      var lastAct = Math.max(st.inT1 || 0, st.outT1 || 0);
+      var firstAct = st.inT0 && st.outT0 ? Math.min(st.inT0, st.outT0) : (st.inT0 || st.outT0 || 0);
+      var spanD = lastAct && firstAct ? (lastAct - firstAct) / 86400 : 0;
+      var nAll = st.inN + st.outN;
+      var perDay = spanD > 0.02 ? nAll / spanD : nAll;
+      var idleH = lastAct ? (nowS - lastAct) / 3600 : 9999;
+      var keepR = st.inTot > 0 ? st.left / st.inTot : 0;
+      var churn = st.left > 0 ? (st.inTot + st.outTot) / st.left : 0;
+      var top1p = st.left > 0 && st.list.length ? st.list[0].q / st.left : 0;
+      var poolQ = 0;
+      (E.data.trades || []).forEach(function (t) { if (t.ts >= nowS - 86400) poolQ += (t.size || 0); });
+      var addrQ = (st.c24inQ || 0) + (st.c24outQ || 0);
+      var share = poolQ > 0 ? addrQ / poolQ : 0;
+      var tags = [];
+      if (perDay >= 20 && gap > 0 && gap <= 30) tags.push(['高频机器人', 'mint']);
+      if (churn >= 20) tags.push(['刷量/搬砖', 'wt']);
+      if (keepR <= 0.03) tags.push(['净流动≈0', 'gray']);
+      else if (keepR >= 0.3) tags.push(['建仓中', 'buy']);
+      else tags.push(['小幅留存', 'gray']);
+      if (keepR > 0.03 && keepR < 0.2 && st.inTot > 0 && st.outTot / st.inTot >= 0.9) tags.push(['持续出货', 'sell']);
+      if (idleH >= 168) tags.push(['已停摆', 'gray']);
+      else if (idleH <= 1) tags.push(['仍在运行', 'buy']);
+      if (top1p >= 0.8) tags.push(['单一来源 ' + (top1p * 100).toFixed(0) + '%', 'wt']);
+      if (share >= 0.03) tags.push(['24h 占池 ' + (share * 100).toFixed(1) + '%', 'mint']);
+      var outR = st.inTot > 0 ? st.outTot / st.inTot : 0;
+      var verdict = churn >= 20 ? (outR >= 0.8 && outR <= 1.25 ? '进出几乎等额对冲，更像程序化刷量或搬砖，不是单边持仓。' :
+        (outR > 1.25 ? '转出明显大于转入，像在卖历史库存。' : '转入明显大于转出，边进边囤。')) :
+        (keepR >= 0.3 ? '净留存比例高，属于持续建仓型。' :
+        (keepR <= 0.03 ? '几乎全部卖出，接近清仓出货。' : '进出基本平衡，留存少量。'));
+      var an = '<div class="ad-hd" style="margin-top:12px"><span>地址分析</span><b>按链上记录推断</b></div>' +
+        '<div class="cs-an"><p>近 ' + (spanD >= 1 ? spanD.toFixed(0) + ' 天' : Math.max(1, Math.round(spanD * 24)) + ' 小时') +
+        '共 ' + nAll + ' 笔（买 ' + st.inN + ' / 卖 ' + st.outN + ' 笔），累计转入 ' + f.num(st.inTot) +
+        '、转出 ' + f.num(st.outTot) + '，现持 ' + f.num(st.left) + '（占转入 ' + (keepR * 100).toFixed(1) + '%）。' +
+        verdict + '</p>' +
+        '<div class="cs-tags">' + tags.map(function (t) {
+          return '<b class="cs-tag ' + t[1] + '">' + t[0] + '</b>';
+        }).join('') + '</div>' +
+        '<div class="cre">判据：日均 ' + perDay.toFixed(1) + ' 笔 · 平均间隔 ' +
+        (gap > 0 ? (gap >= 90 ? (gap / 60).toFixed(1) + ' 小时' : Math.max(1, Math.round(gap)) + ' 分钟') : '—') +
+        ' · 换手 ' + (churn >= 100 ? churn.toFixed(0) : churn.toFixed(1)) + ' 倍 · 留存 ' +
+        (keepR * 100).toFixed(1) + '% · 最近活动 ' + csAgo(lastAct) + ' · 样本 ' + st.covered + ' 条</div></div>';
       var rowsHtml = st.list.slice(0, 12).map(function (x) {
         var isPool = x.from === pool, isMint = /^0x0{40}$/.test(x.from);
         var cls = isPool ? 'buy' : (isMint ? 'mint' : 'wt');
@@ -3814,7 +3866,7 @@ window.ENI = window.ENI || {};
           '<div class="l2">' + (isBuy || isSell ? (p.base + '/' + p.quote + ' 交易对') :
             '<b class="ad-cp" data-cp="' + x.cp + '">' + f.addr(x.cp) + '</b>') + '</div></div>';
       }).join('') || '<div class="cs-empty" style="padding:10px 0">这个筛选下没有记录</div>';
-      body = kv + warn + line + act +
+      body = kv + warn + line + an +
         '<div class="ad-hd"><span>剩余持仓来源</span><b>数量 / 占比</b></div>' + rowsHtml + more + none +
         '<div class="ad-hd" style="margin-top:12px"><span>最近流水</span><b>' +
         (px > 0 ? '金额按现价 $' + (px >= 1 ? px.toFixed(4) : px.toPrecision(4)) : '数量') + '</b></div>' +
