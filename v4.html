@@ -3549,7 +3549,7 @@ window.ENI = window.ENI || {};
         '<div class="hwrap"><table class="tbl mkd-tbl"><thead><tr><th>#</th><th>地址</th><th style="text-align:right">持仓</th><th style="text-align:right">占比</th></tr></thead><tbody>' +
         hv.rows.slice(0, 100).map(function (r) {
           return '<tr><td style="color:#5d6879">' + r.rank + '</td>' +
-            '<td class="mono" style="color:#8fa4bb">' + f.addr(r.addr) + '</td>' +
+            '<td class="mono" style="color:#8fa4bb"><span class="ad-cp" data-cp="' + r.addr + '">' + f.addr(r.addr) + '</span></td>' +
             '<td class="mono" style="text-align:right">' + f.num(r.val) + '</td>' +
             '<td class="mono" style="text-align:right;color:#5d6879">' + (r.pct ? r.pct.toFixed(2) + '%' : '—') + '</td></tr>';
         }).join('') + '</tbody></table></div>' +
