@@ -1179,6 +1179,11 @@ body.whalepage .pairs{display:none}
 .cs-bar{margin-top:5px;height:4px;border-radius:2px;background:rgba(255,255,255,.06);overflow:hidden}
 .cs-bar i{display:block;height:100%;border-radius:2px}
 .cs-empty{padding:26px 0;text-align:center;color:var(--tx3);font-size:12px;line-height:1.7}
+.cs-kv{display:flex;gap:6px;margin:10px 0 2px}
+.cs-kv div{flex:1;min-width:0;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:8px 9px}
+.cs-kv span{display:block;font-size:10.5px;color:var(--tx3)}
+.cs-kv b{display:block;margin-top:3px;font-size:13.5px;color:var(--tx)}
+.cs-kv i{display:block;margin-top:2px;font-size:10px;color:var(--tx3);font-style:normal}
 
 
 /* algo · ladder (buy price / sell price / tiers) */
@@ -3579,7 +3584,7 @@ window.ENI = window.ENI || {};
   /* =========================================================
      03 链上
      ========================================================= */
-  /* ---------- 币源追踪：这个钱包的币从哪来 ---------- */
+  /* ---------- 币源追踪：这个钱包的币从哪来（进出全程 FIFO 归因） ---------- */
   var CS_API = 'https://scan.eni.top/api';
   var CS = E.cs = { addr: '', busy: false, err: '', st: null };
 
@@ -3597,37 +3602,77 @@ window.ENI = window.ENI || {};
     var balP = csFetch('module=account&action=tokenbalance&' + qs)
       .then(function (d) { return (Number(d.result) || 0) / 1e18; })
       .catch(function () { return 0; });
-    var pages = [1, 2, 3].map(function (pg) {
-      return csFetch('module=account&action=tokentx&' + qs + '&page=' + pg + '&offset=200&sort=desc')
-        .then(function (d) { return d.result || []; })
-        .catch(function () { return []; });
-    });
-    return Promise.all([balP].concat(pages)).then(function (ar) {
-      var bal = ar[0], rows = [], i;
-      for (i = 1; i < ar.length; i++) rows = rows.concat(ar[i]);
-      var seen = {}, list = [];
-      for (i = 0; i < rows.length; i++) {
-        var r = rows[i];
-        if (String(r.to || '').toLowerCase() !== a) continue;
-        var k = String(r.hash || '') + '|' + String(r.from || '') + '|' + String(r.value || '');
-        if (seen[k]) continue;
-        seen[k] = 1;
-        list.push({ from: String(r.from || '').toLowerCase(), q: (Number(r.value) || 0) / 1e18, ts: Number(r.timeStamp) || 0 });
+    return balP.then(function (bal) {
+      var all = [];
+      function step(pg) {
+        if (pg > 10) return Promise.resolve(all);
+        return csFetch('module=account&action=tokentx&' + qs + '&page=' + pg + '&offset=200&sort=desc').then(function (d) {
+          var rows = d.result || [];
+          all = all.concat(rows);
+          if (rows.length < 200) return all;
+          return step(pg + 1);
+        }).catch(function () { return all; });
       }
-      var g = {}, total = 0;
-      for (i = 0; i < list.length; i++) {
-        var t = list[i];
-        total += t.q;
-        if (!g[t.from]) g[t.from] = { from: t.from, q: 0, n: 0, last: 0 };
-        g[t.from].q += t.q; g[t.from].n++;
-        if (t.ts > g[t.from].last) g[t.from].last = t.ts;
-      }
-      var src = Object.keys(g).map(function (kk) { return g[kk]; })
-        .sort(function (x, y) { return y.q - x.q; });
-      var pool = 0;
-      for (i = 0; i < src.length; i++) if (src[i].from === (p.book || '')) pool += src[i].q;
-      return { addr: a, bal: bal, total: total, list: src, n: list.length, covered: rows.length, pool: pool };
+      return step(1).then(function (rows) { return csAgg(rows, a, p, bal); });
     });
+  }
+
+  function csAgg(rows, a, p, bal) {
+    var pool = p.book || '', seen = {}, flows = [], i;
+    for (i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var k = String(r.hash || '') + '|' + String(r.from || '') + '|' + String(r.to || '') + '|' + String(r.value || '');
+      if (seen[k]) continue;
+      seen[k] = 1;
+      var f = String(r.from || '').toLowerCase(), t = String(r.to || '').toLowerCase();
+      var q = (Number(r.value) || 0) / 1e18;
+      if (!(q > 0)) continue;
+      var dir = (t === a) ? 1 : ((f === a) ? -1 : 0);
+      if (!dir) continue;
+      flows.push({ ts: Number(r.timeStamp) || 0, dir: dir, from: f, to: t, q: q });
+    }
+    flows.sort(function (x, y) { return x.ts - y.ts; });
+
+    var inTot = 0, inN = 0, outTot = 0, outN = 0, sellTot = 0, sellN = 0, moveTot = 0, moveN = 0, burnTot = 0;
+    var gIn = {}, que = [];
+    for (i = 0; i < flows.length; i++) {
+      var fw = flows[i];
+      if (fw.dir > 0) {
+        inTot += fw.q; inN++;
+        gIn[fw.from] = (gIn[fw.from] || 0) + 1;
+        que.push({ from: fw.from, q: fw.q });
+      } else {
+        outTot += fw.q; outN++;
+        if (fw.to === pool) { sellTot += fw.q; sellN++; }
+        else if (/^0x0{40}$/.test(fw.to)) { burnTot += fw.q; }
+        else { moveTot += fw.q; moveN++; }
+        var need = fw.q;
+        while (need > 1e-12 && que.length) {
+          var head = que[0];
+          var use = Math.min(need, head.q);
+          head.q -= use; need -= use;
+          if (head.q <= 1e-12) que.shift();
+        }
+      }
+    }
+    var g = {};
+    for (i = 0; i < que.length; i++) {
+      var o = que[i];
+      if (o.q <= 1e-9) continue;
+      if (!g[o.from]) g[o.from] = { from: o.from, q: 0 };
+      g[o.from].q += o.q;
+    }
+    var left = 0, kk;
+    for (kk in g) left += g[kk].q;
+    var src = Object.keys(g).map(function (x) { return g[x]; }).sort(function (x, y) { return y.q - x.q; });
+    for (i = 0; i < src.length; i++) src[i].nIn = gIn[src[i].from] || 0;
+    var poolLeft = 0;
+    for (i = 0; i < src.length; i++) if (src[i].from === pool) poolLeft += src[i].q;
+    return {
+      addr: a, bal: bal, inTot: inTot, inN: inN, outTot: outTot, outN: outN,
+      sellTot: sellTot, sellN: sellN, moveTot: moveTot, moveN: moveN, burnTot: burnTot,
+      list: src, left: left, covered: rows.length, poolLeft: poolLeft
+    };
   }
 
   E.csGo = function (addr) {
@@ -3658,32 +3703,40 @@ window.ENI = window.ENI || {};
     var body;
     if (c.busy) body = '<div class="cs-empty">读取链上转账记录…</div>';
     else if (c.err) body = '<div class="cs-empty">' + c.err + '</div>';
-    else if (!c.st) body = '<div class="cs-empty">粘贴地址后点查询：只看当前交易对代币的转入，区分「交易对买入」和「别的地址转来」。</div>';
+    else if (!c.st) body = '<div class="cs-empty">粘贴地址后点查询：把转入、卖出、转出按时间顺序对冲，算出手上这些币分别来自哪里。</div>';
     else {
       var st = c.st;
-      var poolPct = st.total > 0 ? st.pool / st.total * 100 : 0;
-      var sum = '<div class="rk-sum"><span>共 ' + st.n + ' 笔转入 · 覆盖最近 ' + st.covered + ' 条记录</span>' +
-        '<b>当前持有 ' + f.num(st.bal) + ' ' + p.base + '</b></div>';
-      var line = '<div class="cs-line">交易对买入占 ' + poolPct.toFixed(1) + '%，其余 ' + (100 - poolPct).toFixed(1) +
-        '% 来自其他地址（可能是平台提币、团队或朋友）</div>';
+      var leftPct = st.left > 0 ? (st.poolLeft / st.left * 100) : 0;
+      var kv = '<div class="cs-kv">' +
+        '<div><span>总转入</span><b>' + f.num(st.inTot) + '</b><i>' + st.inN + ' 笔</i></div>' +
+        '<div><span>总转出</span><b>' + f.num(st.outTot) + '</b><i>卖出 ' + f.num(st.sellTot) + ' · 转出 ' + f.num(st.moveTot) + '</i></div>' +
+        '<div><span>链上现持</span><b>' + f.num(st.bal) + '</b><i>按记录推算 ' + f.num(st.left) + '</i></div>' +
+        '</div>';
+      var warn = '';
+      if (st.bal > 0 && Math.abs(st.left - st.bal) / st.bal > 0.1) {
+        warn = '<div class="cs-line" style="color:#ff5c7a">推算剩余与链上余额差得多，说明记录没取全（可能是更早的转账或跨链进来的币），下面的占比只代表已取到的部分。</div>';
+      }
+      var line = '<div class="cs-line">手上这 ' + f.num(st.left) + ' ' + p.base + ' 里，交易对买入占 ' +
+        leftPct.toFixed(1) + '%，其他地址转入占 ' + (100 - leftPct).toFixed(1) + '%。</div>';
       var rowsHtml = st.list.slice(0, 12).map(function (x) {
         var isPool = x.from === (p.book || '');
         var isMint = /^0x0{40}$/.test(x.from);
         var cls = isPool ? 'buy' : (isMint ? 'mint' : 'wt');
         var tag = isPool ? '交易对买入' : (isMint ? '铸造' : '地址转入');
-        var pct = st.total > 0 ? (x.q / st.total * 100) : 0;
+        var pct = st.left > 0 ? (x.q / st.left * 100) : 0;
         return '<div class="cs-row"><div class="cs-t"><b class="cs-tag ' + cls + '">' + tag + '</b>' +
           '<span class="cs-ad">' + (isPool ? (p.base + '/' + p.quote + ' 交易对') : f.addr(x.from)) + '</span></div>' +
-          '<div class="cs-n"><i>' + f.num(x.q) + ' ' + p.base + '</i><u>' + (pct >= 1 ? pct.toFixed(0) : pct.toFixed(1)) +
-          '% · ' + x.n + ' 笔</u></div>' +
+          '<div class="cs-n"><i>剩 ' + f.num(x.q) + ' ' + p.base + '</i><u>' + (pct >= 1 ? pct.toFixed(0) : pct.toFixed(1)) +
+          '% · 转入 ' + x.nIn + ' 笔</u></div>' +
           '<div class="cs-bar"><i style="width:' + Math.max(2, Math.min(100, pct)).toFixed(0) + '%;background:' +
           (isPool ? '#26e894' : (isMint ? '#8ce8f9' : '#f2c14e')) + '"></i></div></div>';
       }).join('');
       var more = st.list.length > 12 ? '<div class="cs-empty" style="padding:8px 0">还有 ' + (st.list.length - 12) + ' 个来源没展开</div>' : '';
-      body = sum + line + '<div class="ad-hd"><span>来源</span><b>数量 / 占比</b></div>' + rowsHtml + more;
+      var none = st.list.length ? '' : '<div class="cs-empty" style="padding:10px 0">这个地址在这条交易对上没有余额，全部卖完或转走了。</div>';
+      body = kv + warn + line + '<div class="ad-hd"><span>剩余持仓来源</span><b>数量 / 占比</b></div>' + rowsHtml + more + none;
     }
     return '<div class="sec"><div class="wr-card ad-card">' + head + form + body +
-      '<div class="wr-note">数据源 scan.eni.top 的代币转账记录（每页 200 条，取最近 3 页）。来自交易对地址的转入＝在 DEX 买入；来自其他地址的转入＝别人转给你的，工具不判断对方身份。只统计转入，卖出与转出不计；跨链进来的币链上查不到。</div>' +
+      '<div class="wr-note">数据源 scan.eni.top 的代币转账记录，逐页取到 2000 条上限。转入按时间排队，卖出/转出按先进先出扣减，剩下的就是手上这些币的来源——卖出到交易对算卖出，转给别的地址算转出。跨链进来的币链上查不到，会体现成推算与现持的差额。</div>' +
       '</div></div>';
   }
 
