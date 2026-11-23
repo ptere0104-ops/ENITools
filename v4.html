@@ -3586,7 +3586,7 @@ window.ENI = window.ENI || {};
      ========================================================= */
   /* ---------- 币源追踪：这个钱包的币从哪来（进出全程 FIFO 归因） ---------- */
   var CS_API = 'https://scan.eni.top/api';
-  var CS = E.cs = { addr: '', busy: false, err: '', st: null };
+  var CS = E.cs = { addr: '', draft: '', busy: false, err: '', st: null };
 
   function csFetch(qs) {
     return fetch(CS_API + '?' + qs, { cache: 'no-store' }).then(function (r) {
@@ -3677,6 +3677,10 @@ window.ENI = window.ENI || {};
 
   E.csGo = function (addr) {
     var a = String(addr || '').trim().toLowerCase();
+    CS.draft = a;
+    var hold = document.getElementById('v4csaddr');
+    if (hold && hold.blur) hold.blur();
+    if (!a) { CS.addr = ''; CS.busy = false; CS.err = ''; CS.st = null; if (E.rerender) E.rerender(); return; }
     if (!/^0x[0-9a-f]{40}$/.test(a)) { if (E.toast) E.toast('地址格式不对，要 0x 开头的 40 位'); return; }
     CS.addr = a; CS.busy = true; CS.err = ''; CS.st = null;
     E.ui.chainSub = 'src';
@@ -3698,7 +3702,7 @@ window.ENI = window.ENI || {};
     var head = '<div class="wr-hd" style="margin-top:12px"><h2>币源追踪 · ' + p.base + '</h2>' +
       '<span class="r">查这个钱包的币从哪来</span></div>';
     var form = '<div class="cs-in-wrap">' +
-      '<input id="v4csaddr" class="cs-in" placeholder="粘贴钱包地址 0x…" value="' + (c.addr || '') + '">' +
+      '<input id="v4csaddr" class="cs-in" placeholder="粘贴钱包地址 0x…" value="' + (c.draft || '') + '">' +
       '<button class="cs-go" data-csgo="1">查询</button></div>';
     var body;
     if (c.busy) body = '<div class="cs-empty">读取链上转账记录…</div>';
@@ -6678,7 +6682,7 @@ window.ENI = window.ENI || {};
 
   function render() {
     var ae = document.activeElement;
-    if (ae && (ae.id === 'v4tin' || ae.id === 'v4xq' || ae.id === 'v4addr')) return;
+    if (ae && (ae.id === 'v4tin' || ae.id === 'v4xq' || ae.id === 'v4addr' || ae.id === 'v4csaddr')) return;
     var fn = R[E.ui.page] || E.renderHome;
     view.dataset.page = E.ui.page;
     document.body.classList.toggle('home', E.ui.page === 'home');
@@ -7615,6 +7619,10 @@ window.ENI = window.ENI || {};
     }
     if (!el || !el.dataset || !el.dataset.tbf) return;
     if (E.tpCalc) E.tpCalc();
+  });
+  document.addEventListener('input', function (e) {
+    var tg = e.target;
+    if (tg && tg.id === 'v4csaddr' && E.cs) E.cs.draft = tg.value;
   });
   document.addEventListener('click', function (e) {
     var t = e.target.closest('[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
