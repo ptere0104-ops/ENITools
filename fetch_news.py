@@ -15,11 +15,13 @@ JSON 内联在 HTML 里，键名带转义（形如 \\"full_text\\":\\"...\\"）�
     python fetch_news.py --file xpage.html   # 解析本地已保存的页面
 """
 import base64
+import html as htmlmod
 import io
 import json
 import re
 import sys
 import time
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
@@ -97,6 +99,71 @@ def clean(text):
     return text
 
 
+TRANS_URL = 'https://api.mymemory.translated.net/get'
+GTX_URL = ('https://translate.googleapis.com/translate_a/single'
+           '?client=gtx&sl=en&tl=zh-CN&dt=t&q=')
+
+
+def mt_gtx(chunk):
+    """Google 未公开的 gtx 端点，免 key，长句比 MyMemory 稳。"""
+    q = urllib.parse.quote(chunk)
+    req = urllib.request.Request(GTX_URL + q, headers={'User-Agent': UA})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        d = json.loads(r.read().decode('utf-8', 'ignore'))
+    parts = [seg[0] for seg in (d[0] or []) if seg and seg[0]]
+    return ''.join(parts).strip()
+
+
+def mt_mymemory(chunk):
+    q = urllib.parse.urlencode({'q': chunk[:480], 'langpair': 'en|zh-CN'})
+    req = urllib.request.Request(TRANS_URL + '?' + q, headers={'User-Agent': UA})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        d = json.loads(r.read().decode('utf-8', 'ignore'))
+    t = (d.get('responseData') or {}).get('translatedText') or ''
+    if t and 'MYMEMORY WARNING' not in t.upper() and 'QUERY LENGTH LIMIT' not in t.upper():
+        return htmlmod.unescape(t).strip()
+    return ''
+
+
+def translate(text, retries=2):
+    """英译中：先 gtx，失败退 MyMemory。都失败时保留英文原文，不阻断抓取。"""
+    chunks, buf = [], ''
+    for para in (text or '').split('\n'):
+        if buf and len(buf) + len(para) > 400:
+            chunks.append(buf)
+            buf = ''
+        buf = (buf + '\n' + para) if buf else para
+    if buf:
+        chunks.append(buf)
+    out = []
+    for c in chunks:
+        if not c.strip():
+            out.append(c)
+            continue
+        ok = False
+        for attempt in range(retries):
+            for fn in (mt_gtx, mt_mymemory):
+                try:
+                    t = fn(c)
+                    if t:
+                        out.append(t)
+                        ok = True
+                        break
+                except Exception:  # noqa: BLE001
+                    pass
+            if ok:
+                break
+            time.sleep(1)
+        if not ok:
+            out.append(c)
+    r = '\n'.join(out).strip()
+    # 机翻常见毛病：品牌名被音译、@ 后多出空格
+    for a, b in (('埃尼', 'ENI'), ('＠', '@')):
+        r = r.replace(a, b)
+    r = re.sub(r'@\s+([A-Za-z0-9_])', r'@\1', r)
+    return r
+
+
 def values(text, key, limit=40):
     out = []
     pos = 0
@@ -159,6 +226,7 @@ def parse(html):
 def main():
     args = sys.argv[1:]
     dry = '--dry' in args
+    use_mt = '--no-mt' not in args   # 默认开启机翻；--no-mt 可关闭
     local = None
     if '--file' in args:
         local = args[args.index('--file') + 1]
@@ -191,6 +259,25 @@ def main():
     for it in keep:
         uniq[it['id']] = it
     keep = sorted(uniq.values(), key=lambda x: x['time'], reverse=True)[:MAX_ITEMS]
+
+    # 中文译文：旧快照里已有的人工译文优先复用，没有的走自动机翻
+    prev = {}
+    try:
+        old = json.load(io.open(OUT_PATH, encoding='utf-8'))
+        prev = {i['id']: (i.get('zh') or '') for i in old.get('items', [])}
+    except Exception:  # noqa: BLE001
+        prev = {}
+    for it in keep:
+        zh = prev.get(it['id']) or ''
+        if not zh and use_mt:
+            zh = translate(it['text'])
+        it['zh'] = zh
+
+    missing = [it for it in keep if not it.get('zh')]
+    if missing:
+        print('待人工润色 %d 条（写进 zh 字段后再上传）：' % len(missing))
+        for it in missing:
+            print('  id=%s | %s | %s' % (it['id'], it['time'], it['text'][:90].replace('\n', ' ')))
 
     out = {
         'source': SOURCE_URL,
