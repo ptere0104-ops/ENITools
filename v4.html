@@ -3703,8 +3703,7 @@ window.ENI = window.ENI || {};
         ? '<button class="hk-more" data-hkmore="1">再看 ' + Math.min(100, list.length - showN) + ' 个（共 ' + list.length + '）</button>' : '';
       var cntLine = q ? '<div class="hk-note">匹配 ' + list.length + ' 个地址' + (list.length ? '，最靠前第 ' + list[0].rank + ' 名' : '') + '</div>' : '';
 
-      holdersView = '<div class="sec"><div class="sec-hd"><h2>持币人</h2><span class="sub">HOLDERS</span>' +
-        '<div class="r">' + f.num(hv.count) + ' 个地址</div></div>' +
+      holdersView = '<div class="sec"><div class="sec-hd"><h2>持币人</h2><span class="sub">HOLDERS</span></div>' +
         barHtml + cntLine +
         '<div class="hwrap"><table class="tbl mkd-tbl"><thead><tr><th>#</th><th>地址 / 类型</th>' +
         '<th style="text-align:right">持仓</th><th style="text-align:right">占比</th><th></th></tr></thead><tbody>' +
