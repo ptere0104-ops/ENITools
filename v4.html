@@ -1203,6 +1203,9 @@ body.whalepage .pairs{display:none}
 .cs-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
 .cs-an .cre{margin-top:8px;font-size:10px;color:var(--tx3);line-height:1.65}
 .cs-tag.gray{color:#9fb3c8;background:rgba(159,179,200,.13)}
+.cs-tag.wash{color:#ff3b5c;background:rgba(255,59,92,.15);border:1px solid rgba(255,59,92,.34)}
+.cs-tag.gather{color:#ff9f43;background:rgba(255,159,67,.14);border:1px solid rgba(255,159,67,.32)}
+.cs-tag.brdg{color:#ffd84d;background:rgba(255,216,77,.13);border:1px solid rgba(255,216,77,.3)}
 
 
 /* algo · ladder (buy price / sell price / tiers) */
@@ -3621,8 +3624,12 @@ window.ENI = window.ENI || {};
     var balP = csFetch('module=account&action=tokenbalance&' + qs)
       .then(function (d) { return (Number(d.result) || 0) / 1e18; })
       .catch(function () { return 0; });
-    return balP.then(function (bal) {
-      var all = [];
+    /* txlist 用来识别跨链桥调用（bridge(bytes32,uint256,address,uint256,bytes)） */
+    var txP = csFetch('module=account&action=txlist&address=' + a + '&page=1&offset=100&sort=desc')
+      .then(function (d) { return (d.result || []); })
+      .catch(function () { return []; });
+    return Promise.all([balP, txP]).then(function (res) {
+      var bal = res[0], txs = res[1], all = [];
       function step(pg) {
         if (pg > 10) return Promise.resolve(all);
         return csFetch('module=account&action=tokentx&' + qs + '&page=' + pg + '&offset=200&sort=desc').then(function (d) {
@@ -3632,7 +3639,7 @@ window.ENI = window.ENI || {};
           return step(pg + 1);
         }).catch(function () { return all; });
       }
-      return step(1).then(function (rows) { return csAgg(rows, a, p, bal); });
+      return step(1).then(function (rows) { return csAgg(rows, a, p, bal, txs); });
     });
   }
 
@@ -3664,7 +3671,7 @@ window.ENI = window.ENI || {};
     return '$<0.01';
   }
 
-  function csAgg(rows, a, p, bal) {
+  function csAgg(rows, a, p, bal, txs) {
     var pool = p.book || '', seen = {}, flows = [], i;
     for (i = 0; i < rows.length; i++) {
       var r = rows[i];
@@ -3682,10 +3689,10 @@ window.ENI = window.ENI || {};
 
     var inTot = 0, inN = 0, outTot = 0, outN = 0, sellTot = 0, sellN = 0, moveTot = 0, moveN = 0, burnTot = 0;
     var inT0 = 0, inT1 = 0, outT0 = 0, outT1 = 0, c24 = 0, c24in = 0, c24inQ = 0, c24outQ = 0, now = Math.floor(Date.now() / 1000);
-    var gIn = {}, que = [];
+    var c24src = {}, gIn = {}, que = [];
     for (i = 0; i < flows.length; i++) {
       var fw = flows[i];
-      if (fw.ts >= now - 86400) { c24++; if (fw.dir > 0) { c24in++; c24inQ += fw.q; } else { c24outQ += fw.q; } }
+      if (fw.ts >= now - 86400) { c24++; if (fw.dir > 0) { c24in++; c24inQ += fw.q; c24src[fw.from] = 1; } else { c24outQ += fw.q; } }
       if (fw.dir > 0) {
         inTot += fw.q; inN++;
         if (!inT0) inT0 = fw.ts;
@@ -3725,11 +3732,23 @@ window.ENI = window.ENI || {};
     for (i = flows.length - 1; i >= 0 && fl.length < 60; i--) {
       fl.push({ ts: flows[i].ts, d: flows[i].dir, cp: flows[i].dir > 0 ? flows[i].from : flows[i].to, q: flows[i].q });
     }
+    /* 跨链桥外流：selector 0xd7310e6a = bridge(assetId,destChainId,recipient,inputAmount,extData) */
+    var brg = [];
+    (txs || []).forEach(function (t) {
+      var inp = String(t.input || '').toLowerCase();
+      if (inp.slice(0, 10) !== '0xd7310e6a') return;
+      var dest = parseInt(inp.slice(74, 138), 16) || 0;
+      var amt = (Number('0x' + (inp.slice(202, 266) || '0')) || 0) / 1e18;
+      if (!(amt > 0) || amt > 1e12) return;
+      brg.push({ ts: Number(t.timeStamp) || 0, dest: dest, amt: amt, hash: String(t.hash || '') });
+    });
+    brg.sort(function (x, y) { return y.ts - x.ts; });
     return {
       addr: a, bal: bal, inTot: inTot, inN: inN, outTot: outTot, outN: outN,
       sellTot: sellTot, sellN: sellN, moveTot: moveTot, moveN: moveN, burnTot: burnTot,
       list: src, left: left, covered: rows.length, poolLeft: poolLeft,
-      inT0: inT0, inT1: inT1, outT0: outT0, outT1: outT1, c24: c24, c24in: c24in, c24inQ: c24inQ, c24outQ: c24outQ, fl: fl
+      inT0: inT0, inT1: inT1, outT0: outT0, outT1: outT1, c24: c24, c24in: c24in, c24inQ: c24inQ, c24outQ: c24outQ,
+      c24srcN: Object.keys(c24src).length, bridges: brg, fl: fl
     };
   }
 
@@ -3802,7 +3821,18 @@ window.ENI = window.ENI || {};
       (E.data.trades || []).forEach(function (t) { if (t.ts >= nowS - 86400) poolQ += (t.size || 0); });
       var addrQ = (st.c24inQ || 0) + (st.c24outQ || 0);
       var share = poolQ > 0 ? addrQ / poolQ : 0;
+      /* ---- 三档判定：自成交（红）/ 归集（橙）/ 跨链外流（黄） ---- */
+      var twoWay = st.inTot + st.outTot;
+      var netRatio = twoWay > 0 ? Math.abs(st.inTot - st.outTot) / twoWay : 1;
+      var washHit = twoWay > 0 && netRatio <= 0.03 && st.outTot > 0 && st.sellTot / st.outTot >= 0.7 &&
+        ((st.bal > 0 && twoWay / st.bal >= 1e5) || (st.bal <= 1e-4 && twoWay >= 1000));
+      var brAll = st.bridges || [];
+      var brOut = brAll.filter(function (b) { return b.dest !== 263 && b.amt >= Math.max(st.bal * 0.3, 10); });
+      var gatherHit = (st.c24srcN || 0) >= 3 && st.c24inQ > 0 && st.c24outQ <= st.c24inQ * 0.2 && st.bal >= st.c24inQ * 0.5;
       var tags = [];
+      if (washHit) tags.push(['自成交', 'wash']);
+      if (gatherHit) tags.push(['归集', 'gather']);
+      if (brOut.length) tags.push(['跨链外流 → 链 ' + brOut[0].dest, 'brdg']);
       if (perDay >= 20 && gap > 0 && gap <= 30) tags.push(['高频机器人', 'mint']);
       if (churn >= 20) tags.push(['刷量/搬砖', 'wt']);
       if (keepR <= 0.03) tags.push(['净流动≈0', 'gray']);
@@ -3818,6 +3848,15 @@ window.ENI = window.ENI || {};
         (outR > 1.25 ? '转出明显大于转入，像在卖历史库存。' : '转入明显大于转出，边进边囤。')) :
         (keepR >= 0.3 ? '净留存比例高，属于持续建仓型。' :
         (keepR <= 0.03 ? '几乎全部卖出，接近清仓出货。' : '进出基本平衡，留存少量。'));
+      var why = [];
+      if (washHit) why.push('<b>自成交</b>：累计转入 ' + f.num(st.inTot) + '、转出 ' + f.num(st.outTot) +
+        '，净比仅 ' + (netRatio * 100).toFixed(2) + '%，双向额是现持的 ' +
+        (st.bal > 0 ? (twoWay / st.bal).toFixed(0) : '∞') + ' 倍，卖出又全部打在交易对上 —— 同一地址来回做，成交量是自己刷的。');
+      if (gatherHit) why.push('<b>归集</b>：24 小时内 ' + st.c24srcN + ' 个不同地址往这里转（合计 ' + f.num(st.c24inQ) +
+        '），基本不再卖出 —— 钱在往一处收，通常接着就是出货或跨链。');
+      if (brOut.length) why.push('<b>跨链外流</b>：' + brOut.length + ' 笔桥调用把资产转去链 ' + brOut[0].dest + '（合计 ' +
+        f.num(brOut.reduce(function (s, b) { return s + b.amt; }, 0)) + '），这部分已离开 ENI Chain，不再计入本地持仓。');
+      var whyHtml = why.length ? '<div class="cs-line" style="margin-top:6px;color:#9fb3c8;line-height:1.75">' + why.join('<br>') + '</div>' : '';
       var an = '<div class="ad-hd" style="margin-top:12px"><span>地址分析</span><b>按链上记录推断</b></div>' +
         '<div class="cs-an"><p>近 ' + (spanD >= 1 ? spanD.toFixed(0) + ' 天' : Math.max(1, Math.round(spanD * 24)) + ' 小时') +
         '共 ' + nAll + ' 笔（买 ' + st.inN + ' / 卖 ' + st.outN + ' 笔），累计转入 ' + f.num(st.inTot) +
@@ -3829,7 +3868,9 @@ window.ENI = window.ENI || {};
         '<div class="cre">判据：日均 ' + perDay.toFixed(1) + ' 笔 · 平均间隔 ' +
         (gap > 0 ? (gap >= 90 ? (gap / 60).toFixed(1) + ' 小时' : Math.max(1, Math.round(gap)) + ' 分钟') : '—') +
         ' · 换手 ' + (churn >= 100 ? churn.toFixed(0) : churn.toFixed(1)) + ' 倍 · 留存 ' +
-        (keepR * 100).toFixed(1) + '% · 最近活动 ' + csAgo(lastAct) + ' · 样本 ' + st.covered + ' 条</div></div>';
+        (keepR * 100).toFixed(1) + '% · 最近活动 ' + csAgo(lastAct) + ' · 样本 ' + st.covered + ' 条' +
+        ' · 净比 ' + (netRatio * 100).toFixed(2) + '%' +
+        (brAll.length ? ' · 桥出 ' + brAll.length + ' 笔' : '') + '</div>' + whyHtml + '</div>';
       var rowsHtml = st.list.slice(0, 12).map(function (x) {
         var isPool = x.from === pool, isMint = /^0x0{40}$/.test(x.from);
         var cls = isPool ? 'buy' : (isMint ? 'mint' : 'wt');
