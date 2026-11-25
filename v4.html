@@ -1468,6 +1468,41 @@ body.whalepage .pairs{display:none}
 .sc-row{padding:10px 12px 2px;display:flex;justify-content:flex-end}
 .sc-row .sc-btn{padding:7px 14px;font-size:12.5px}
 
+
+/* ===== 盘口深度：按价位聚合 + 双列独立滚动 + 全屏深度层 ===== */
+.ob2-cols{display:flex;align-items:flex-start}
+.ob2-col{flex:1 1 50%;min-width:0}
+.ob2-col+.ob2-col{border-left:1px solid rgba(255,255,255,.045)}
+.ob2-sct{height:232px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ob2-sct::-webkit-scrollbar{width:0;height:0}
+.ob2-sct .ob2-row{height:29px}
+.ob2-n{font-style:normal;font-size:9px;color:#4aa3ff;margin-left:3px;vertical-align:super}
+.ob2-foot{display:flex;align-items:center;gap:8px;padding:4px 12px 11px;font-size:10.5px;color:var(--tx3);font-family:var(--mono)}
+.ob2-foot span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ob2-full{margin-left:auto;flex:none;border:1px solid rgba(53,211,154,.45);background:rgba(53,211,154,.10);color:#35d39a;font-size:11px;padding:5px 10px;border-radius:6px}
+.ob2-full:active{opacity:.72}
+.tg-scroll{max-height:310px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tg-scroll::-webkit-scrollbar{width:0;height:0}
+.obv{position:fixed;left:0;right:0;top:0;bottom:0;z-index:150;background:#05090d;display:flex;flex-direction:column}
+.obv-hd{display:flex;align-items:center;gap:10px;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
+.obv-hd h3{font-size:14px;font-weight:700;color:var(--tx)}
+.obv-hd .obv-px{font-family:var(--mono);font-size:17px;font-weight:700}
+.obv-hd .obv-px.up{color:var(--up)}.obv-hd .obv-px.down{color:var(--down)}.obv-hd .obv-px.flat{color:var(--tx)}
+.obv-hd .obv-sp{font-family:var(--mono);font-size:10.5px;color:var(--tx3)}
+.obv-x{margin-left:auto;font-size:22px;line-height:1;color:var(--tx2);padding:2px 6px;background:none;border:0}
+.obv-hint{padding:8px 14px 6px;font-size:10.5px;color:var(--tx3);line-height:1.5}
+.obv-body{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.obv-row{display:flex;align-items:center;height:28px;padding:0 14px;font-family:var(--mono);font-size:12px;position:relative}
+.obv-row i{position:absolute;left:0;top:3px;bottom:3px;border-radius:2px;pointer-events:none}
+.obv-row .p{position:relative;width:96px;font-weight:600}
+.obv-row .n{position:relative;width:52px;text-align:right;font-size:9.5px;color:#4aa3ff}
+.obv-row .ovq{position:relative;margin-left:auto;color:var(--tx2)}
+.obv-sec{padding:9px 14px 3px;font-size:10px;letter-spacing:.08em;color:#5d6879}
+.obv-mid{display:flex;align-items:baseline;gap:10px;padding:9px 14px;background:#0a1219;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.obv-mid b{font-family:var(--mono);font-size:19px;font-weight:700}
+.obv-mid b.up{color:var(--up)}.obv-mid b.down{color:var(--down)}.obv-mid b.flat{color:var(--tx)}
+.obv-mid span{font-size:10.5px;color:var(--tx3);font-family:var(--mono)}
+.obv-mid em{margin-left:auto;font-style:normal;font-size:10px;color:var(--tx3);letter-spacing:.06em}
 </style>
 </head>
 <body>
@@ -1840,14 +1875,9 @@ window.ENI = window.ENI || {};
   E.fetchBook = function (pairKey, mid) {
     var p = E.PAIRS[pairKey];
     var band = '';
-    if (mid && isFinite(mid) && mid > 0) {
-      var lo = Math.round(mid * 0.65 * DEC).toString();
-      var hi = Math.round(mid * 1.35 * DEC).toString();
-      band = 'price_gte: "' + lo + '", price_lte: "' + hi + '"';
-    }
-    var q = '{ bids: orders(first: 180, orderBy: price, orderDirection: desc, where: {pairAddress: "' + p.book +
+    var q = '{ bids: orders(first: 400, orderBy: price, orderDirection: desc, where: {pairAddress: "' + p.book +
       '", orderType: 0, isActive: true' + (band ? ', ' + band : '') + '}) { price remainingIn }\n' +
-      'asks: orders(first: 180, orderBy: price, orderDirection: asc, where: {pairAddress: "' + p.book +
+      'asks: orders(first: 400, orderBy: price, orderDirection: asc, where: {pairAddress: "' + p.book +
       '", orderType: 1, isActive: true' + (band ? ', ' + band : '') + '}) { price remainingIn } }';
     return gql(q).then(function (d) {
       var bids = (d.bids || []).map(function (o) { return { p: amt(o.price), s: amt(o.remainingIn) }; });
@@ -3575,43 +3605,109 @@ window.ENI = window.ENI || {};
     if (UI.ind === 'macd') legend = '<span><i style="background:#f2c14e"></i>DIF</span><span><i style="background:#6fa8ff"></i>DEA</span><span>柱 = 差值</span>';
     if (UI.ind === 'rsi') legend = '<span><i style="background:#5ee2d0"></i>RSI14</span><span>70 / 30 线</span>';
 
-    /* 盘口：左右两列对比（卖价/数量 ｜ 买价/数量），带深度条 */
-    var obRows = '';
+    /* 盘口：按价位聚合（同价多单合并为 1 档），只显示现价 ±50% 内的有效档，其余计入「远档」 */
+    var obAgg = function (list) {
+      var m = {}, arr = [], q = Math.pow(10, p.dp);
+      for (var i0 = 0; i0 < list.length; i0++) {
+        var o0 = list[i0];
+        var k0 = Math.round(o0.p * q) / q;
+        var e0 = m[k0];
+        if (!e0) { e0 = m[k0] = { p: k0, s: 0, n: 0 }; arr.push(e0); }
+        e0.s += o0.s; e0.n++;
+      }
+      return arr;
+    };
+    var obMid = D.price > 0 ? D.price : 0;
+    var allA = obAgg(D.book.asks), allB = obAgg(D.book.bids);
+    var inA = [], inB = [], cutA = 0, cutB = 0;
+    allA.forEach(function (o) { if (!obMid || Math.abs(o.p / obMid - 1) <= 0.5) inA.push(o); else cutA++; });
+    allB.forEach(function (o) { if (!obMid || Math.abs(o.p / obMid - 1) <= 0.5) inB.push(o); else cutB++; });
+    /* 卖盘自上而下：远 → 近（最近一档贴在中间价上方）；买盘自上而下：近 → 远 */
+    var asks = inA.slice().reverse();
+    var bids = inB.slice();
+    var maxA = 1, maxB = 1;
+    asks.forEach(function (o) { if (o.s > maxA) maxA = o.s; });
+    bids.forEach(function (o) { if (o.s > maxB) maxB = o.s; });
     var sameKey = E.bookPrev && E.bookPrev.key === E.activePair;
     var prvA = (sameKey && E.bookPrev.a) || {}, prvB = (sameKey && E.bookPrev.b) || {};
-    var nowA = {}, nowB = {}, nA = {}, nB = {};
-    var nRows = Math.max(asks.length, bids.length);
-    for (var oi = 0; oi < nRows; oi++) {
-      var oa = asks[oi], ob = bids[oi];
-      var ka = '', kb = '';
-      if (oa) { var pa = f.px(oa.p, p.dp); nA[pa] = (nA[pa] || 0) + 1; ka = pa + '#' + nA[pa]; }
-      if (ob) { var pb2 = f.px(ob.p, p.dp); nB[pb2] = (nB[pb2] || 0) + 1; kb = pb2 + '#' + nB[pb2]; }
-      var fa = oa && (prvA[ka] === undefined ? true : Math.abs(prvA[ka] - oa.s) > 1e-9);
-      var fb = ob && (prvB[kb] === undefined ? true : Math.abs(prvB[kb] - ob.s) > 1e-9);
-      if (oa) nowA[ka] = oa.s;
-      if (ob) nowB[kb] = ob.s;
-      obRows += '<div class="ob2-row">' +
-        '<div class="ob2-side' + (fa ? ' fx' : '') + '">' + (oa ?
-          '<span class="ob2-bar a" style="width:' + Math.max(oa.s / maxA * 100, 4).toFixed(1) + '%"></span>' +
-          '<span class="ob2-pr a">' + f.px(oa.p, p.dp) + '</span><span class="ob2-qty">' + f.qty(oa.s) + '</span>' : '') +
-        '</div>' +
-        '<div class="ob2-side' + (fb ? ' fx' : '') + '">' + (ob ?
-          '<span class="ob2-bar b" style="width:' + Math.max(ob.s / maxB * 100, 4).toFixed(1) + '%"></span>' +
-          '<span class="ob2-pr b">' + f.px(ob.p, p.dp) + '</span><span class="ob2-qty">' + f.qty(ob.s) + '</span>' : '') +
-        '</div>' +
+    var nowA = {}, nowB = {};
+    var obSide = function (o, side, max, prv) {
+      var kx = side + o.p.toFixed(p.dp);
+      var fx = prv[kx] === undefined ? true : Math.abs(prv[kx] - o.s) > 1e-9;
+      (side === 'a' ? nowA : nowB)[kx] = o.s;
+      return '<div class="ob2-side' + (fx ? ' fx' : '') + '">' +
+        '<span class="ob2-bar ' + side + '" style="width:' + Math.max(o.s / max * 100, 4).toFixed(1) + '%"></span>' +
+        '<span class="ob2-pr ' + side + '">' + f.px(o.p, p.dp) + '</span>' +
+        '<span class="ob2-qty">' + f.qty(o.s) + (o.n > 1 ? '<i class="ob2-n">' + o.n + '</i>' : '') + '</span>' +
         '</div>';
-    }
+    };
+    var askRows = asks.map(function (o) { return '<div class="ob2-row">' + obSide(o, 'a', maxA, prvA) + '</div>'; }).join('');
+    var bidRows = bids.map(function (o) { return '<div class="ob2-row">' + obSide(o, 'b', maxB, prvB) + '</div>'; }).join('');
     E.bookPrev = { key: E.activePair, a: nowA, b: nowB };
-    var spread = (asks.length && bids.length) ? f.px(Math.abs(asks[0].p - bids[0].p), p.dp) : '—';
+    var bestAsk = asks.length ? asks[asks.length - 1].p : null;
+    var bestBid = bids.length ? bids[0].p : null;
+    var spread = (bestAsk != null && bestBid != null) ? f.px(Math.abs(bestAsk - bestBid), p.dp) : '—';
+
+    var obFoot = (cutA || cutB)
+      ? '已隐藏偏离现价 50% 以上的远档：卖 ' + cutA + ' · 买 ' + cutB
+      : ('全部 ' + (asks.length + bids.length) + ' 档 · 卖 ' + asks.length + ' / 买 ' + bids.length);
 
     var bookBox = (bids.length || asks.length) ?
-      '<div class="ob2"><div class="ob2-hd">' +
+      '<div class="ob2">' +
+      '<div class="ob2-hd">' +
       '<div class="ob2-side"><span class="ob2-pr">卖价</span><span class="ob2-qty">数量</span></div>' +
       '<div class="ob2-side"><span class="ob2-pr">买价</span><span class="ob2-qty">数量</span></div>' +
-      '</div>' + obRows +
+      '</div>' +
+      '<div class="ob2-cols">' +
+      '<div class="ob2-col"><div class="ob2-sct" id="obA">' + askRows + '</div></div>' +
+      '<div class="ob2-col"><div class="ob2-sct" id="obB">' + bidRows + '</div></div>' +
+      '</div>' +
       '<div class="ob2-mid"><b class="' + cls + '">' + f.px(D.price, p.dp) + '</b>' +
-      '<span>价差 ' + spread + '</span><em>MID</em></div></div>'
-      : '<div class="empty">盘口暂无挂单，或现价上下 35% 内无活跃订单</div>';
+      '<span>价差 ' + spread + '</span><em>MID</em></div>' +
+      '<div class="ob2-foot"><span>' + obFoot + '</span>' +
+      '<button class="ob2-full" data-obfull="1">全部档位 →</button></div>' +
+      '</div>'
+      : '<div class="empty">盘口暂无挂单，或现价上下 50% 内无活跃订单</div>';
+
+    /* 全屏深度页：含 ±50% 以外的全部聚合档，可自由上下滑 */
+    E.obOpen = function () {
+      var mx1 = 1, mx2 = 1;
+      allA.forEach(function (o) { if (o.s > mx1) mx1 = o.s; });
+      allB.forEach(function (o) { if (o.s > mx2) mx2 = o.s; });
+      var rowOf = function (o, side, mx) {
+        return '<div class="obv-row">' +
+          '<i style="width:' + Math.max(o.s / mx * 100, 2).toFixed(1) + '%;background:' +
+          (side === 'a' ? 'rgba(255,92,122,.13)' : 'rgba(38,232,148,.12)') + '"></i>' +
+          '<span class="p" style="color:' + (side === 'a' ? '#ff6d84' : '#35e6a2') + '">' + f.px(o.p, p.dp) + '</span>' +
+          '<span class="n">' + (o.n > 1 ? o.n + ' 笔' : '') + '</span>' +
+          '<span class="ovq">' + f.qty(o.s) + '</span>' +
+          '</div>';
+      };
+      var sA = allA.slice().reverse().map(function (o) { return rowOf(o, 'a', mx1); }).join('');
+      var sB = allB.map(function (o) { return rowOf(o, 'b', mx2); }).join('');
+      var lay = document.querySelector('.obv');
+      if (lay && lay.parentNode) lay.parentNode.removeChild(lay);
+      lay = document.createElement('div');
+      lay.className = 'obv';
+      lay.innerHTML =
+        '<div class="obv-hd"><h3>' + (p.base || '') + '/' + (p.quote || '') + ' 深度</h3>' +
+        '<span class="obv-px ' + cls + '">' + f.px(D.price, p.dp) + '</span>' +
+        '<span class="obv-sp">价差 ' + spread + '</span>' +
+        '<button class="obv-x" data-obvclose="1">×</button></div>' +
+        '<div class="obv-hint">全部活跃挂单 ' + (allA.length + allB.length) + ' 档（卖 ' + allA.length +
+        ' / 买 ' + allB.length + '），含偏离现价 50% 以上的远档 · 可自由上下滑</div>' +
+        '<div class="obv-body">' +
+        '<div class="obv-sec">卖盘 · 自上而下由远到近</div><div id="obvA">' + sA + '</div>' +
+        '<div class="obv-mid"><b class="' + cls + '">' + f.px(D.price, p.dp) + '</b>' +
+        '<span>价差 ' + spread + '</span><em>MID</em></div>' +
+        '<div class="obv-sec">买盘 · 自上而下由近到远</div><div id="obvB">' + sB + '</div>' +
+        '</div>';
+      document.body.appendChild(lay);
+      var bd = lay.querySelector('.obv-body'), aL = lay.querySelector('#obvA');
+      if (bd && aL) {
+        bd.scrollTop = Math.max(0, (aL.offsetTop - bd.offsetTop) + aL.offsetHeight - bd.clientHeight + 100);
+      }
+    };
 
     var tradesAll = D.trades.slice(0, 30);
     var bigMin = E.bigMin(D.trades);
@@ -3638,7 +3734,7 @@ window.ENI = window.ENI || {};
         }).join('') + '</div>';
     };
 
-    var segTitle = segK === 'book' ? ['买卖盘口', 'ORDER BOOK', '买 ' + bids.length + ' / 卖 ' + asks.length]
+    var segTitle = segK === 'book' ? ['买卖盘口', 'ORDER BOOK', '卖 ' + asks.length + ' 档 / 买 ' + bids.length + ' 档']
       : segK === 'trades' ? ['实时成交', 'TRADES', D.trades.length + ' 笔']
       : ['大额成交', 'BIG TRADES', '$' + Math.round(E.bigMin(D.trades)) + ' 起'];
     var segHd = '<div class="sec-hd"><h2>' + segTitle[0] + '</h2><span class="sub">' + segTitle[1] +
@@ -3651,8 +3747,8 @@ window.ENI = window.ENI || {};
 
     var segBody =
       segK === 'book' ? bookBox :
-      segK === 'trades' ? (tradesAll.length ? tradeTable(tradesAll) : '<div class="empty">暂无成交</div>') :
-      (bigs.length ? tradeTable(bigs) : '<div class="empty">暂无大额成交</div>');
+      segK === 'trades' ? (tradesAll.length ? '<div class="tg-scroll">' + tradeTable(tradesAll) + '</div>' : '<div class="empty">暂无成交</div>') :
+      (bigs.length ? '<div class="tg-scroll">' + tradeTable(bigs) + '</div>' : '<div class="empty">暂无大额成交</div>');
 
     var sub = UI.mkdSub || 'market';
 
@@ -7190,6 +7286,13 @@ window.ENI = window.ENI || {};
     scrollSave = window.scrollY || document.scrollingElement.scrollTop || 0;
   }, { passive: true });
   window.addEventListener('touchmove', function () { lastScrollAt = Date.now(); }, { passive: true });
+  /* 内层滚动区（盘口/成交）也要冻结重绘，否则 3s 轮询会把滚动位置打回顶部 */
+  document.addEventListener('scroll', function (e) {
+    var tg = e.target;
+    if (!tg || !tg.id || !E.ui) return;
+    if (tg.id === 'obA') { E.ui.obA = tg.scrollTop; lastScrollAt = Date.now(); }
+    else if (tg.id === 'obB') { E.ui.obB = tg.scrollTop; lastScrollAt = Date.now(); }
+  }, true);
 
   function render() {
     var ae = document.activeElement;
@@ -7225,6 +7328,10 @@ window.ENI = window.ENI || {};
     if (adw) E.ui.adrScroll = adw.scrollTop;
     var wflow = document.querySelector('.wr-flow');
     var wflowTop = wflow ? wflow.scrollTop : 0;
+    if (E.ui.obKey !== E.activePair) { E.ui.obKey = E.activePair; E.ui.obA = null; E.ui.obB = null; }
+    var obA0 = document.getElementById('obA'), obB0 = document.getElementById('obB');
+    if (obA0) E.ui.obA = obA0.scrollTop;
+    if (obB0) E.ui.obB = obB0.scrollTop;
     var keepK = document.getElementById('kV4');
     var keepA = document.getElementById('aChart');
     var keepH = document.getElementById('hChart');
@@ -7255,6 +7362,9 @@ window.ENI = window.ENI || {};
       var slotH = document.getElementById('hChart');
       if (slotH && slotH.parentNode) slotH.parentNode.replaceChild(keepH, slotH);
     }
+    var obA1 = document.getElementById('obA'), obB1 = document.getElementById('obB');
+    if (obA1) obA1.scrollTop = (E.ui.obA == null) ? obA1.scrollHeight : E.ui.obA;
+    if (obB1) obB1.scrollTop = (E.ui.obB == null) ? 0 : E.ui.obB;
     if (pg0 === E.ui.page && sy0 > 0) {
       try { window.scrollTo(0, sy0); } catch (e) {}
     }
@@ -8161,7 +8271,7 @@ window.ENI = window.ENI || {};
     if (tg && tg.id === 'v4csaddr' && E.cs) E.cs.draft = tg.value;
   });
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-cp],[data-csf],[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],[data-hcp],[data-hksort],[data-hkf],[data-hkmore],[data-hksrc],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
+    var t = e.target.closest('[data-cp],[data-csf],[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],[data-hcp],[data-hksort],[data-hkf],[data-hkmore],[data-hksrc],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd,[data-obfull],[data-obvclose]');
     if (!t) return;
 
     if (t.dataset.cp) { copyText(t.dataset.cp, '地址已复制', t.dataset.cp); return; }
@@ -8250,6 +8360,8 @@ window.ENI = window.ENI || {};
     }
     if (t.dataset.mktback) { E.ui.mktView = 'list'; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.mseg) { E.ui.mktSeg = t.dataset.mseg; render(); return; }
+    if (t.dataset.obfull) { if (E.obOpen) E.obOpen(); return; }
+    if (t.dataset.obvclose) { var lv = document.querySelector('.obv'); if (lv && lv.parentNode) lv.parentNode.removeChild(lv); return; }
     if (t.dataset.mkdn) { E.ui.mkdSub = t.dataset.mkdn; E.fetchMkdHolders(E.activePair); render(); return; }
     if (t.dataset.mcopy) {
       var isAddr = E.ui.page === 'addr';
