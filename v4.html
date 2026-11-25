@@ -7066,9 +7066,18 @@ window.ENI = window.ENI || {};
   }
   E.fanShow = fanShow;
 
+  /* 轮询重绘保护：手指在滑/刚滑完时不要重建 DOM，否则滚动位置归零并打断惯性 */
+  var softTick = false, lastScrollAt = 0, scrollSave = 0;
+  window.addEventListener('scroll', function () {
+    lastScrollAt = Date.now();
+    scrollSave = window.scrollY || document.scrollingElement.scrollTop || 0;
+  }, { passive: true });
+  window.addEventListener('touchmove', function () { lastScrollAt = Date.now(); }, { passive: true });
+
   function render() {
     var ae = document.activeElement;
-    if (ae && (ae.id === 'v4tin' || ae.id === 'v4xq' || ae.id === 'v4addr' || ae.id === 'v4csaddr')) return;
+    if (ae && (ae.id === 'v4tin' || ae.id === 'v4xq' || ae.id === 'v4addr' || ae.id === 'v4csaddr' || ae.id === 'hkQ')) return;
+    if (softTick && Date.now() - lastScrollAt < 1500) return;
     var fn = R[E.ui.page] || E.renderHome;
     view.dataset.page = E.ui.page;
     document.body.classList.toggle('home', E.ui.page === 'home');
@@ -7091,6 +7100,9 @@ window.ENI = window.ENI || {};
       return;
     }
     switchTick = 0;
+    /* 重绘前记住整页滚动位置，重绘后还原，避免列表被刷新顶回顶部 */
+    var pg0 = E.ui.page;
+    var sy0 = window.scrollY || document.scrollingElement.scrollTop || scrollSave || 0;
     /* K 线容器跨重绘保留：否则 3s 轮询会不断销毁图表、打断 tooltip */
     var adw = document.querySelector('.ad-wrap');
     if (adw) E.ui.adrScroll = adw.scrollTop;
@@ -7099,10 +7111,13 @@ window.ENI = window.ENI || {};
     var keepK = document.getElementById('kV4');
     var keepA = document.getElementById('aChart');
     var keepH = document.getElementById('hChart');
+    var html = fn();
+    /* 轮询命中且内容一字未变时不动 DOM：避免列表每 3s 重建造成闪烁与滚动抖动 */
+    if (softTick && html === view.innerHTML) { return; }
     if (keepK && keepK.parentNode) keepK.parentNode.removeChild(keepK);
     if (keepA && keepA.parentNode) keepA.parentNode.removeChild(keepA);
     if (keepH && keepH.parentNode) keepH.parentNode.removeChild(keepH);
-    view.innerHTML = fn();
+    view.innerHTML = html;
     if (E.ui.page === 'whale' && wflowTop) {
       var wf2 = document.querySelector('.wr-flow');
       if (wf2) wf2.scrollTop = wflowTop;
@@ -7122,6 +7137,9 @@ window.ENI = window.ENI || {};
     if (keepH) {
       var slotH = document.getElementById('hChart');
       if (slotH && slotH.parentNode) slotH.parentNode.replaceChild(keepH, slotH);
+    }
+    if (pg0 === E.ui.page && sy0 > 0) {
+      try { window.scrollTo(0, sy0); } catch (e) {}
     }
     paintTabs();
     setTimeout(paintCharts, 0);
@@ -7887,7 +7905,9 @@ window.ENI = window.ENI || {};
     var iv = E.store.get('iv', 3000);
     E.pull(function () {
       paintTop();
+      softTick = true;
       render();
+      softTick = false;
       timer = setTimeout(loop, iv);
     });
   }
