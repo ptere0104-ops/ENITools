@@ -8560,7 +8560,7 @@ window.ENI = window.ENI || {};
 </script>
 
 <script>
-/* SC_CARDS_INLINE v2 */
+/* SC_CARDS_INLINE v3 */
 /* share.js — 一键分享卡片（纯 canvas 绘制，1080×1440，2x 导出） */
 (function () {
   var E = window.ENI;
@@ -8747,8 +8747,9 @@ window.ENI = window.ENI || {};
       stamp: 'EVBC 持币人 · 链上快照 ' + dtFull(Date.now() / 1000)
     });
 
-    var kinds = st.kinds || {};
-    var list = Object.keys(kinds).map(function (k) { return { k: k, q: kinds[k] }; })
+    var kv = st.kinds || [];
+    if (!Array.isArray(kv)) { var o = kv; kv = Object.keys(o).map(function (k) { return { k: k, q: o[k], n: 0 }; }); }
+    var list = kv.map(function (x) { return { k: x.k, q: x.q || 0, n: x.n || 0 }; })
       .sort(function (a, b) { return b.q - a.q; });
     var top2 = list.slice(0, 2);
     var rest = list.slice(2).reduce(function (s, x) { return s + x.q; }, 0);
@@ -8771,7 +8772,7 @@ window.ENI = window.ENI || {};
     g.fillStyle = dg; g.fill();
     T(g, st.addr, 126, 330, 21, '#CFE2EF', 400, true);
     T(g, 'EVM ADDRESS · 全量 ' + nf(st.covered || 0, 0) + ' 笔代币流水已解析', 126, 360, 12, CL.dim2);
-    var c1 = '持币排名 #' + (st.rank || '—'), c2 = (st.contract ? '合约地址' : '非合约 个人钱包');
+    var c1 = '持币排名 #' + (st.rank || '—'), c2 = st.kindTag || '非合约 个人钱包';
     g.font = font(13, 400);
     var w1 = g.measureText(c1).width + 28, w2 = g.measureText(c2).width + 28;
     chipRect(g, c1, 1008 - w1, 328, CL.gold);
@@ -8835,7 +8836,7 @@ window.ENI = window.ENI || {};
     g.beginPath(); g.arc(79, 1010, 7, 0, Math.PI * 2); g.fillStyle = CL.acc; g.fill();
     g.beginPath(); g.arc(79, 1062, 7, 0, Math.PI * 2); g.fillStyle = CL.blue; g.fill();
     T(g, dtFull(st.inT0), 104, 1002, 17, '#CFE1EE');
-    T(g, '首次获得 · 首笔 ' + nf(st.firstQty || 0, 0) + ' EVBC', 320, 1004, 13, CL.dim);
+    T(g, '首次获得 · 首笔 ' + nf(st.firstQty || 0, 0) + ' EVBC' + (st.firstNote ? '，' + st.firstNote : ''), 320, 1004, 12.5, CL.dim);
     T(g, dtFull(st.inT1), 104, 1054, 17, '#CFE1EE');
     T(g, '最近一次转入 · 之后无新动作即视为停滞', 320, 1056, 13, CL.dim);
 
@@ -8949,7 +8950,9 @@ window.ENI = window.ENI || {};
     });
 
     /* 链上 */
-    var C = E.hold && E.hold.calc, nq = C ? C.nq : 0, nAll = C ? C.nAll : 0;
+    var C = E.hold && E.hold.calc, nq = C ? C.nq : 0;
+    var hv = (E.mkdHolders || {})[E.activePair] || {};
+    var nAll = (C && C.nAll) || hv.count || 0;
     panel(g, 72, 776, 936, 150);
     T(g, '链上同步', 100, 794, 16, '#CFE1EE', 700);
     T(g, '持币结构 · 与本机全量扫描同源', 196, 797, 13, CL.dim2);
@@ -8962,7 +8965,7 @@ window.ENI = window.ENI || {};
     T(g, '前 10 集中度', 676, 852, 13, CL.dim2);
     var p10 = 0;
     if (E.hold && E.hold.rows && E.hold.supply) {
-      p10 = E.hold.rows.slice(0, 10).reduce(function (s, r) { return s + (r.v || 0); }, 0) / E.hold.supply * 100;
+      p10 = E.hold.rows.slice(0, 10).reduce(function (s, r) { return s + (r.val || 0); }, 0) / E.hold.supply * 100;
     }
     if (p10) T(g, p10.toFixed(2) + '%', 790, 844, 26, CL.goldLt, 600, true);
     else T(g, '加载持币人页后显示', 790, 852, 13, CL.dim2);
@@ -9174,17 +9177,19 @@ window.ENI = window.ENI || {};
       if (!st) throw new Error('请先在「币源追踪」里查一个地址，再生成这张卡');
       if (!st.rank && E.hold && E.hold.rows) {
         for (var i = 0; i < E.hold.rows.length; i++) {
-          if ((E.hold.rows[i].a || '').toLowerCase() === st.addr) { st.rank = i + 1; break; }
+          if ((E.hold.rows[i].addr || '').toLowerCase() === st.addr) { st.rank = i + 1; break; }
         }
       }
-      var list = st.list || [];
-      st.kindN = st.kindN || {};
-      list.forEach(function (x) { if (x.d > 0) { var k = x.k || 'p2p'; st.kindN[k] = (st.kindN[k] || 0) + 1; } });
-      var first = null;
-      for (var j = 0; j < list.length; j++) { if (list[j].d > 0) { first = list[j]; break; } }
-      st.firstQty = first ? first.q : 0;
-      st.inT0 = st.inT0 || (first ? first.ts : Date.now() / 1000);
-      st.contract = !!(st.isContract);
+      st.kindN = {};
+      (st.kinds || []).forEach(function (x) { if (x && x.k) st.kindN[x.k] = x.n || 0; });
+      var fl = st.fl || [], firstIn = null;
+      for (var j = fl.length - 1; j >= 0; j--) { if (fl[j].d > 0) { firstIn = fl[j]; break; } }
+      st.firstQty = firstIn ? firstIn.q : 0;
+      st.inT0 = st.inT0 || (firstIn ? firstIn.ts : Date.now() / 1000);
+      var kn = (E.HOLD_KNOWN || {})[st.addr];
+      st.contract = !!kn;
+      st.kindTag = kn ? String(kn) : '非合约 个人钱包';
+      if (st.firstQty > 0) st.firstNote = '首笔来自 ' + short(firstIn.cp || '');
       return drawAddr(st);
     }
     if (kind === 'daily') return drawDaily();
