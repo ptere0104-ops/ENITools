@@ -1450,6 +1450,15 @@ body.whalepage .pairs{display:none}
 .hk-ar{color:#3d4757;text-align:right;width:16px}
 .hk-more{margin:10px 12px 0;width:calc(100% - 24px);height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--tx2);font-size:12px;font-family:inherit}
 
+
+/* 行内展开：这个地址的持仓来源 */
+.hk-tr.open{background:rgba(64,150,215,.06)}
+.hk-srow td{padding:0 !important;border-bottom:1px solid rgba(255,255,255,.05)}
+.hk-src{padding:2px 12px 10px;background:rgba(8,13,22,.55)}
+.hk-src .hk-lg{margin-top:7px}
+.hk-src .hk-note{padding:6px 0 0}
+.hk-sload{display:block;padding:9px 0;font-size:11px;color:#5d6879}
+
 </style>
 </head>
 <body>
@@ -3654,7 +3663,7 @@ window.ENI = window.ENI || {};
 
     /* ---- 持币人视图 ---- */
     var hv = E.mkdHolders[E.activePair];
-    var hk = UI.hk || (UI.hk = { q: '', sort: 'val', fil: 'all', show: 100 });
+    var hk = UI.hk || (UI.hk = { q: '', sort: 'val', fil: 'all', show: 100, open: '' });
     var holdersView;
     if (!hv || !hv.rows.length) {
       holdersView = '<div class="sec"><div class="sec-hd"><h2>持币人</h2><span class="sub">HOLDERS</span></div>' +
@@ -3683,6 +3692,46 @@ window.ENI = window.ENI || {};
         '<button data-hkf="' + (hk.fil === 'p' ? 'all' : 'p') + '" class="' + (hk.fil === 'p' ? 'on' : '') + '">只看个人</button></div>';
 
       /* 表格 */
+      var openA = String(hk.open || '').toLowerCase();
+      /* 点开某行：行内就地展开该地址的持仓来源（按需查询，缓存在本机内存） */
+      function srcRow(a) {
+        var c = E.srcCache ? E.srcCache[a] : null;
+        if (!c) {
+          if (hk.errA === a) {
+            return '<tr class="hk-srow"><td colspan="5"><div class="hk-src">' +
+              '<span class="hk-sload" style="color:#ff5c7a">链上记录读取失败，稍后再试</span></div></td></tr>';
+          }
+          if (E.srcLoad) {
+            E.srcLoad(a).then(function () {
+              if (E.ui.hk && E.ui.hk.open === a) { E.ui.hk.errA = ''; if (E.rerender) E.rerender(); }
+            }).catch(function () {
+              if (E.ui.hk && E.ui.hk.open === a) { E.ui.hk.errA = a; if (E.rerender) E.rerender(); }
+            });
+          }
+          return '<tr class="hk-srow"><td colspan="5"><div class="hk-src">' +
+            '<span class="hk-sload">读取链上转账记录…</span></div></td></tr>';
+        }
+        var kn = c.kinds || [], tot = 0;
+        kn.forEach(function (x) { tot += x.q; });
+        if (!(tot > 0)) tot = c.left > 0 ? c.left : 1;
+        var bar = kn.map(function (x) {
+          var w = x.q / tot * 100, col = (SRC_KIND[x.k] || SRC_KIND.p2p).col;
+          return w >= 0.5 ? '<i style="width:' + w.toFixed(2) + '%;background:' + col + '"></i>' : '';
+        }).join('');
+        var lg = kn.map(function (x) {
+          var kd = SRC_KIND[x.k] || SRC_KIND.p2p;
+          return '<span><s style="background:' + kd.col + '"></s>' + kd.l + ' <em>' +
+            (x.q / tot * 100).toFixed(0) + '% · ' + f.num(x.q) + '</em></span>';
+        }).join('') || '<span>暂无来源记录</span>';
+        var gapW = (c.bal > 0 && c.gap / c.bal > 0.1)
+          ? '<div class="hk-note" style="color:#ff5c7a">流水超过抓取上限，只算到 ' + f.num(c.left) +
+            ' / 实际 ' + f.num(c.bal) + '，占比仅代表已抓部分</div>' : '';
+        return '<tr class="hk-srow"><td colspan="5"><div class="hk-src">' +
+          '<div class="hk-bt">' + bar + '</div><div class="hk-lg">' + lg + '</div>' +
+          '<div class="hk-note">首次获得 ' + (c.inT0 ? csT(c.inT0) + '（' + csAgo(c.inT0) + '）' : '—') +
+          ' · 已抓到 ' + c.inN + ' 笔转入 · 推算持仓 ' + f.num(c.left) + ' ' + (hv.sym || '') + '</div>' + gapW +
+          '</div></td></tr>';
+      }
       var tb = shown.map(function (r) {
         var d24 = '';
         if (r.d24 != null) {
@@ -3690,13 +3739,15 @@ window.ENI = window.ENI || {};
         } else if (r.fresh) {
           d24 = '<b class="hk-d24 fresh">新进</b>';
         }
-        return '<tr class="hk-tr" data-hcp="' + r.addr + '">' +
+        var row = '<tr class="hk-tr' + (openA === String(r.addr).toLowerCase() ? ' open' : '') + '" data-hksrc="' + r.addr + '">' +
           '<td style="color:#5d6879">' + r.rank + '</td>' +
           '<td class="mono" style="color:#8fa4bb"><span class="ad-cp" data-cp="' + r.addr + '">' + f.addr(r.addr) + '</span>' +
           '<em class="hk-tagl' + (r.t === 'c' ? ' c' : '') + '">' + r.lbl + '</em>' + d24 + '</td>' +
           '<td class="mono" style="text-align:right">' + f.num(r.val) + '</td>' +
           '<td class="mono" style="text-align:right;color:#5d6879">' + (r.pct ? r.pct.toFixed(2) + '%' : '—') + '</td>' +
-          '<td class="hk-ar">›</td></tr>';
+          '<td class="hk-ar" data-hcp="' + r.addr + '">›</td></tr>';
+        if (openA === String(r.addr).toLowerCase()) row += srcRow(openA);
+        return row;
       }).join('') || '<tr><td colspan="5" style="text-align:center;color:#5d6879;padding:16px 0">没有匹配的地址</td></tr>';
 
       var moreBtn = showN < list.length
@@ -3817,6 +3868,43 @@ window.ENI = window.ENI || {};
     if (/^0x0{40}$/.test(addr)) return 'mint';
     return 'p2p';
   }
+
+  /* 持币人页内联来源：按需查询 + 内存缓存 + 可见行后台预取 */
+  var SRC_CACHE = {};
+  E.srcCache = SRC_CACHE;
+  E.srcBusy = {};
+  E.srcLoad = function (addr) {
+    var a = String(addr || '').toLowerCase();
+    if (!a) return Promise.reject(new Error('no addr'));
+    if (SRC_CACHE[a]) return Promise.resolve(SRC_CACHE[a]);
+    if (E.srcBusy[a]) return E.srcBusy[a];
+    var pr = csLoad(a).then(function (st) {
+      var b = {
+        kinds: st.kinds || [], left: st.left, inN: st.inN, inT0: st.inT0,
+        bal: st.bal, gap: Math.abs((st.left || 0) - (st.bal || 0))
+      };
+      SRC_CACHE[a] = b;
+      delete E.srcBusy[a];
+      return b;
+    }).catch(function (e) { delete E.srcBusy[a]; throw e; });
+    E.srcBusy[a] = pr;
+    return pr;
+  };
+  E.prefetchSrc = function () {
+    var hv = E.mkdHolders[E.activePair];
+    if (!hv || !hv.rows) return;
+    var addrs = hv.rows.filter(function (r) { return r.t === 'p'; }).slice(0, 4)
+      .map(function (r) { return String(r.addr).toLowerCase(); });
+    var i = 0, n = 0;
+    function next() {
+      if (i >= addrs.length || n >= 4) return;
+      var a = addrs[i++];
+      if (SRC_CACHE[a]) { next(); return; }
+      n++;
+      E.srcLoad(a).catch(function () {}).then(function () { setTimeout(next, 900); });
+    }
+    next();
+  };
 
   function csT(ts) {
     if (!ts) return '—';
@@ -7167,6 +7255,16 @@ window.ENI = window.ENI || {};
       E.fetchAge(E.activePair); E.fetchVerified(E.activePair); E.fetchMkdHolders(E.activePair);
       E.warmHistory(E.activePair);
       if (E.ui.tf === '4h' || E.ui.tf === '1d') E.loadLong(E.activePair, E.ui.tf);
+      /* 持币人页：用户停手 3 秒后，悄悄预取榜单前几个地址的来源，点开时秒出 */
+      if (E.ui.mktView === 'detail' && (E.ui.mkdSub || 'market') === 'holders' && E.prefetchSrc) {
+        var srcKey = E.activePair + '|' + ((E.mkdHolders[E.activePair] || {}).count || 0);
+        if (E.__srcKey !== srcKey) {
+          E.__srcKey = srcKey;
+          setTimeout(function () {
+            if (Date.now() - lastScrollAt > 2500 && E.prefetchSrc) E.prefetchSrc();
+          }, 1600);
+        }
+      }
     }
   }
 
@@ -8050,7 +8148,7 @@ window.ENI = window.ENI || {};
     if (tg && tg.id === 'v4csaddr' && E.cs) E.cs.draft = tg.value;
   });
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-cp],[data-csf],[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],[data-hcp],[data-hksort],[data-hkf],[data-hkmore],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
+    var t = e.target.closest('[data-cp],[data-csf],[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],[data-hcp],[data-hksort],[data-hkf],[data-hkmore],[data-hksrc],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
     if (!t) return;
 
     if (t.dataset.cp) { copyText(t.dataset.cp, '地址已复制', t.dataset.cp); return; }
@@ -8186,6 +8284,16 @@ window.ENI = window.ENI || {};
     if (t.dataset.hcp) {
       if (E.cs) E.cs.draft = t.dataset.hcp;
       if (E.csGo) E.csGo(t.dataset.hcp);
+      return;
+    }
+    if (t.dataset.hksrc) {
+      var hsA = String(t.dataset.hksrc).toLowerCase();
+      var hsY = window.scrollY || 0;
+      if (!E.ui.hk) E.ui.hk = { q: '', sort: 'val', fil: 'all', show: 100, open: '' };
+      E.ui.hk.open = (String(E.ui.hk.open || '') === hsA) ? '' : hsA;
+      E.ui.hk.errA = '';
+      render();
+      setTimeout(function () { window.scrollTo(0, hsY); }, 0);
       return;
     }
     if (t.dataset.hksort) {
