@@ -3676,40 +3676,6 @@ window.ENI = window.ENI || {};
       var showN = Math.min(list.length, hk.show || 100);
       var shown = list.slice(0, showN);
 
-      /* 顶部指标 */
-      var row1 = '<div class="rows2">' +
-        '<div class="r2"><span>总供应量</span><b>' + (hv.supply > 0 ? f.num(hv.supply) + ' ' + hv.sym : '—') + '</b></div>' +
-        '<div class="r2"><span>持币地址</span><b>' + f.num(hv.count) + '</b></div>' +
-        '<div class="r2"><span>前 10 含合约</span><b>' + (stt.p10 || 0).toFixed(2) + '%</b></div>' +
-        '</div>';
-      var netTxt, netCls = '';
-      if (stt.prevDay) {
-        var nd = stt.newN - stt.goneN, nq = (stt.inQ || 0) - (stt.outQ || 0);
-        netTxt = (nd > 0 ? '+' : '') + nd + ' 个 · ' + (nq >= 0 ? '+' : '-') + f.num(Math.abs(nq));
-        netCls = nq >= 0 ? 'up' : 'down';
-      } else {
-        netTxt = '待积累（今天起记录）';
-      }
-      var row2 = '<div class="rows2">' +
-        '<div class="r2"><span>前 10 剔除合约</span><b>' + (stt.p10x || 0).toFixed(2) + '%</b></div>' +
-        '<div class="r2"><span>≥1,000 EVBC（采样）</span><b>' + f.num(stt.eff1000 || 0) + ' / ' + f.num(stt.sampled || 0) + '</b></div>' +
-        '<div class="r2"><span>24h 净增</span><b class="' + netCls + '">' + netTxt + '</b></div>' +
-        '</div>';
-
-      /* 持仓分档：条形按地址个数分配，图例给数量与持仓 */
-      var totN = (stt.bands || []).reduce(function (a, b) { return a + b.n; }, 0) || 1;
-      var bandBar = (stt.bands || []).map(function (b, i) {
-        var w = b.n / totN * 100;
-        var col = ['#e8b64c', '#26e894', '#41aae9', '#5d6879'][i];
-        return w > 0 ? '<i style="width:' + w.toFixed(2) + '%;background:' + col + '"></i>' : '';
-      }).join('');
-      var bandLg = (stt.bands || []).map(function (b, i) {
-        var col = ['#e8b64c', '#26e894', '#41aae9', '#5d6879'][i];
-        return '<span><s style="background:' + col + '"></s>' + b.k + ' <em>' + b.n + ' 个 · ' + f.num(b.q) + '</em></span>';
-      }).join('');
-      var bandHtml = '<div class="hk-bands"><div class="hk-bt">' + bandBar + '</div><div class="hk-lg">' + bandLg + '</div>' +
-        '<div class="hk-note">条形按地址个数分配；分档按持仓占比划分，采样前 ' + (stt.sampled || hv.rows.length) + ' 名</div></div>';
-
       /* 工具条 */
       var barHtml = '<div class="hk-bar"><input id="hkQ" class="hk-q" value="' + (hk.q || '') + '" placeholder="搜地址，看排第几">' +
         '<button data-hksort="val" class="' + (hk.sort === 'val' ? 'on' : '') + '">持仓</button>' +
@@ -3739,7 +3705,7 @@ window.ENI = window.ENI || {};
 
       holdersView = '<div class="sec"><div class="sec-hd"><h2>持币人</h2><span class="sub">HOLDERS</span>' +
         '<div class="r">' + f.num(hv.count) + ' 个地址</div></div>' +
-        row1 + row2 + bandHtml + barHtml + cntLine +
+        barHtml + cntLine +
         '<div class="hwrap"><table class="tbl mkd-tbl"><thead><tr><th>#</th><th>地址 / 类型</th>' +
         '<th style="text-align:right">持仓</th><th style="text-align:right">占比</th><th></th></tr></thead><tbody>' +
         tb + '</tbody></table></div>' + moreBtn +
