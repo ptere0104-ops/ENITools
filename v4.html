@@ -1426,6 +1426,30 @@ body.whalepage .pairs{display:none}
 .hottt{font-size:12.5px;color:#eaf4ff;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hotdt{margin-top:4px;font-family:var(--mono);font-size:10px;color:#7d93ab}
 
+
+/* ============ holders enhanced ============ */
+.hk-bands{padding:10px 12px 6px;border-bottom:1px solid rgba(255,255,255,.05)}
+.hk-bt{display:flex;height:6px;border-radius:3px;overflow:hidden;background:rgba(255,255,255,.05)}
+.hk-bt i{display:block;height:100%}
+.hk-lg{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:10px;color:var(--tx3)}
+.hk-lg s{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:4px;text-decoration:none;vertical-align:middle}
+.hk-lg em{font-style:normal;color:#8fa4bb;font-family:var(--mono)}
+.hk-note{font-size:10px;color:#5d6879;padding:6px 12px 0}
+.hk-bar{display:flex;gap:6px;padding:8px 12px;align-items:center;border-bottom:1px solid rgba(255,255,255,.05)}
+.hk-q{flex:1;min-width:0;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--tx);font-size:12px;padding:0 9px;font-family:inherit}
+.hk-q::placeholder{color:#5d6879}
+.hk-bar button{height:30px;padding:0 9px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--tx3);font-size:11px;font-family:inherit;white-space:nowrap}
+.hk-bar button.on{color:var(--gold);border-color:rgba(232,182,76,.45);background:rgba(232,182,76,.1)}
+.hk-tagl{display:block;font-style:normal;font-size:9.5px;color:#5d6879;letter-spacing:.02em}
+.hk-tagl.c{color:#41aae9}
+.hk-d24{float:right;font-family:var(--mono);font-size:10px;font-weight:700}
+.hk-d24.up{color:var(--up)}
+.hk-d24.down{color:var(--down)}
+.hk-d24.fresh{color:var(--gold)}
+.hk-tr:active{background:rgba(255,255,255,.04)}
+.hk-ar{color:#3d4757;text-align:right;width:16px}
+.hk-more{margin:10px 12px 0;width:calc(100% - 24px);height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--tx2);font-size:12px;font-family:inherit}
+
 </style>
 </head>
 <body>
@@ -1710,7 +1734,7 @@ window.ENI = window.ENI || {};
     });
   }
 
-  /* 带超时的 fetch：跨域请求被浏览器挂起时不再无限等待 */
+  /* 带超时的 fetch：跨域请求被挂起时不再无限等待 */
   function fetchT(u, ms) {
     return new Promise(function (res, rej) {
       var done = false;
@@ -2058,13 +2082,51 @@ window.ENI = window.ENI || {};
     return step().catch(function () { return acc.items; });
   }
 
-  E.holders = function (tok) {
+  /* ---------- 持币地址分类 / 快照 / 统计 ---------- */
+  E.HOLD_KNOWN = {
+    '0x70348b77227619d4908a0bf43e96a3caa438045f': '代币合约',
+    '0xd739642150c3f93b41cec5b9ea77dd36442b2907': '桥代币',
+    '0xc7182f3e2e030cf83d627be9fa3bfdb6fd04ce04': 'DEX 路由',
+    '0xfa2b8b042a9fd4a88ee7b5593afe901bf28cf00d': 'DEX 路由',
+    '0x6ada4a104bde43362e4caa47229870e8364175d0': '交易池',
+    '0x93b4f92b0d400c4f64e887543f7750ce52f642b7': '跨链桥',
+    '0x956730b8eedd581cfcbf79399307c4c5690e10c8': '空投合约',
+    '0x0000000000000000000000000000000000000000': '销毁'
+  };
+  function holdType(addr, tokAddr, book) {
+    if (E.HOLD_KNOWN[addr]) return { t: 'c', l: E.HOLD_KNOWN[addr], cp: 1 };
+    if (tokAddr && addr === tokAddr) return { t: 'c', l: '代币合约', cp: 1 };
+    if (book && addr === book) return { t: 'c', l: '交易池', cp: 1 };
+    return { t: 'p', l: '个人', cp: 0 };
+  }
+  function hDay(off) {
+    var d = new Date(Date.now() + (off || 0) * 86400000);
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function hSnapGet(sym, day) {
+    try { return JSON.parse(localStorage.getItem('eniHS_' + sym + '_' + day) || 'null'); } catch (e) { return null; }
+  }
+  function hSnapPrev(sym) {
+    for (var i = 1; i <= 3; i++) {
+      var s = hSnapGet(sym, hDay(-i));
+      if (s && s.m) return s;
+    }
+    return null;
+  }
+  function hSnapPut(sym, rows) {
+    var m = {};
+    rows.forEach(function (r) { m[r.addr] = r.val; });
+    try { localStorage.setItem('eniHS_' + sym + '_' + hDay(0), JSON.stringify({ at: Date.now(), m: m })); } catch (e) {}
+  }
+
+  E.holders = function (tok, want) {
     var t = E.TOKENS[tok] || E.TOKENS.EVBC;
+    var n = want > 0 ? want : 100;
     var metaP = t.meta ? jget(t.meta).catch(function () { return null; }) : Promise.resolve({ decimals: 18 });
     var statP = (tok === 'ENI')
       ? jget('https://scan.eni.top/api/v2/stats').catch(function () { return null; })
       : Promise.resolve(null);
-    return Promise.all([pullHolders(t, 100), metaP, statP]).then(function (a) {
+    return Promise.all([pullHolders(t, n), metaP, statP]).then(function (a) {
       var list = a[0] || {}, meta = a[1] || {}, stats = a[2] || {};
       var items = Array.isArray(list) ? list : (list.items || []);
       var dd = Number(meta.decimals);
@@ -2080,12 +2142,68 @@ window.ENI = window.ENI || {};
         rows.push({ rank: rows.length + 1, addr: addr, val: raw / dec });
       });
       var supply = Number(meta.total_supply || 0) / dec;
+      var sym = meta.symbol || t.sym;
       rows.forEach(function (r) { r.pct = supply > 0 ? r.val / supply * 100 : 0; });
+
+      /* 地址分类：合约 / 个人 */
+      var tokAddr = String(t.addr || '').toLowerCase();
+      var book = '';
+      try {
+        if (E.PAIRS && E.PAIRS.EVBC && E.PAIRS.EVBC.book) book = String(E.PAIRS.EVBC.book).toLowerCase();
+      } catch (e) {}
+      rows.forEach(function (r) {
+        var ty = holdType(r.addr, tokAddr, book);
+        r.t = ty.t; r.lbl = ty.l; r.cp = ty.cp; r.d24 = null; r.fresh = 0;
+      });
+
+      function sum(list) { return list.reduce(function (s, r) { return s + (r.pct || 0); }, 0); }
+      var pers = rows.filter(function (r) { return r.t === 'p'; });
+      var bands = [
+        { k: '>1%', n: 0, q: 0 }, { k: '0.1–1%', n: 0, q: 0 },
+        { k: '0.01–0.1%', n: 0, q: 0 }, { k: '<0.01%', n: 0, q: 0 }
+      ];
+      rows.forEach(function (r) {
+        var i = r.pct > 1 ? 0 : (r.pct > 0.1 ? 1 : (r.pct > 0.01 ? 2 : 3));
+        bands[i].n++; bands[i].q += r.val;
+      });
+      var stat = {
+        p10: sum(rows.slice(0, 10)),
+        p10x: sum(pers.slice(0, 10)),
+        p50x: sum(pers.slice(0, 50)),
+        p100x: sum(pers.slice(0, 100)),
+        cN: rows.length - pers.length,
+        pN: pers.length,
+        sampled: rows.length,
+        eff1000: rows.filter(function (r) { return r.val >= 1000; }).length,
+        eff10: rows.filter(function (r) { return r.val >= 10; }).length,
+        dust: rows.filter(function (r) { return r.val < 1; }).length,
+        bands: bands,
+        prevDay: null, newN: 0, goneN: 0, inQ: 0, outQ: 0
+      };
+
+      /* 24h 对比（本地快照：每天首次打开记录一次） */
+      var prev = hSnapPrev(sym);
+      if (prev) {
+        stat.prevDay = hDay(-1);
+        var cur = {};
+        rows.forEach(function (r) {
+          cur[r.addr] = 1;
+          var y = prev.m[r.addr];
+          if (y == null) { r.fresh = 1; stat.newN++; stat.inQ += r.val; }
+          else { r.d24 = r.val - y; if (r.d24 > 0) stat.inQ += r.d24; else stat.outQ += -r.d24; }
+        });
+        Object.keys(prev.m).forEach(function (a) {
+          if (!cur[a] && (prev.m[a] || 0) > 0) { stat.goneN++; stat.outQ += prev.m[a]; }
+        });
+      }
+      hSnapPut(sym, rows);
+
       return {
         rows: rows,
         count: Number(meta.holders_count || 0) || Number(stats.total_addresses || 0) || rows.length,
         supply: supply,
-        sym: meta.symbol || t.sym
+        sym: sym,
+        stat: stat
       };
     });
   };
@@ -2335,11 +2453,11 @@ window.ENI = window.ENI || {};
   /* ---------- 详情页持币缓存 ---------- */
   E.mkdHolders = {};
   var hBusy = {}, hAt = {};
-  E.fetchMkdHolders = function (pair) {
-    if (E.mkdHolders[pair]) return;
+  E.fetchMkdHolders = function (pair, want, force) {
+    if (E.mkdHolders[pair] && !force) return;
     if (hBusy[pair]) return;
     hBusy[pair] = true;
-    E.holders(pair === 'ENI' ? 'ENI' : 'EVBC')
+    E.holders(pair === 'ENI' ? 'ENI' : 'EVBC', want || 200)
       .then(function (res) {
         hBusy[pair] = false; hAt[pair] = Date.now();
         E.mkdHolders[pair] = res;
@@ -3004,7 +3122,7 @@ window.ENI = window.ENI || {};
   var f = E.f;
 
   var D = E.data = { key: '', trades: [], book: { bids: [], asks: [] }, at: 0, price: 0, err: '' };
-  var UI = E.ui = { tf: '15m', ind: 'ma', chainSub: 'whale', algSub: 'ladder', hodlTok: 'EVBC', page: 'home', mktView: 'list', mktSort: null, mktAsc: false };
+  var UI = E.ui = { tf: '15m', ind: 'ma', chainSub: 'whale', algSub: 'ladder', hodlTok: 'EVBC', page: 'home', mktView: 'list', mktSort: null, mktAsc: false, hk: { q: '', sort: 'val', fil: 'all', show: 100 } };
 
   function $(s, r) { return (r || document).querySelector(s); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -3536,27 +3654,97 @@ window.ENI = window.ENI || {};
 
     /* ---- 持币人视图 ---- */
     var hv = E.mkdHolders[E.activePair];
+    var hk = UI.hk || (UI.hk = { q: '', sort: 'val', fil: 'all', show: 100 });
     var holdersView;
     if (!hv || !hv.rows.length) {
       holdersView = '<div class="sec"><div class="sec-hd"><h2>持币人</h2><span class="sub">HOLDERS</span></div>' +
         '<div class="empty">持币数据加载中…若长时间无数据，请稍后重试</div></div>';
     } else {
-      var top10 = hv.rows.slice(0, 10);
-      var p10 = top10.reduce(function (a, r) { return a + (r.pct || 0); }, 0);
+      var stt = hv.stat || {};
+      var q = String(hk.q || '').trim().toLowerCase();
+      var list = hv.rows.filter(function (r) {
+        if (hk.fil === 'p' && r.t !== 'p') return false;
+        if (q && String(r.addr).indexOf(q) < 0) return false;
+        return true;
+      });
+      if (hk.sort === 'd24') {
+        list = list.slice().sort(function (a, b) {
+          var x = a.d24 == null ? -1e12 : a.d24, y = b.d24 == null ? -1e12 : b.d24;
+          return y - x;
+        });
+      }
+      var showN = Math.min(list.length, hk.show || 100);
+      var shown = list.slice(0, showN);
+
+      /* 顶部指标 */
+      var row1 = '<div class="rows2">' +
+        '<div class="r2"><span>总供应量</span><b>' + (hv.supply > 0 ? f.num(hv.supply) + ' ' + hv.sym : '—') + '</b></div>' +
+        '<div class="r2"><span>持币地址</span><b>' + f.num(hv.count) + '</b></div>' +
+        '<div class="r2"><span>前 10 含合约</span><b>' + (stt.p10 || 0).toFixed(2) + '%</b></div>' +
+        '</div>';
+      var netTxt, netCls = '';
+      if (stt.prevDay) {
+        var nd = stt.newN - stt.goneN, nq = (stt.inQ || 0) - (stt.outQ || 0);
+        netTxt = (nd > 0 ? '+' : '') + nd + ' 个 · ' + (nq >= 0 ? '+' : '-') + f.num(Math.abs(nq));
+        netCls = nq >= 0 ? 'up' : 'down';
+      } else {
+        netTxt = '待积累（今天起记录）';
+      }
+      var row2 = '<div class="rows2">' +
+        '<div class="r2"><span>前 10 剔除合约</span><b>' + (stt.p10x || 0).toFixed(2) + '%</b></div>' +
+        '<div class="r2"><span>≥1,000 EVBC（采样）</span><b>' + f.num(stt.eff1000 || 0) + ' / ' + f.num(stt.sampled || 0) + '</b></div>' +
+        '<div class="r2"><span>24h 净增</span><b class="' + netCls + '">' + netTxt + '</b></div>' +
+        '</div>';
+
+      /* 持仓分档：条形按地址个数分配，图例给数量与持仓 */
+      var totN = (stt.bands || []).reduce(function (a, b) { return a + b.n; }, 0) || 1;
+      var bandBar = (stt.bands || []).map(function (b, i) {
+        var w = b.n / totN * 100;
+        var col = ['#e8b64c', '#26e894', '#41aae9', '#5d6879'][i];
+        return w > 0 ? '<i style="width:' + w.toFixed(2) + '%;background:' + col + '"></i>' : '';
+      }).join('');
+      var bandLg = (stt.bands || []).map(function (b, i) {
+        var col = ['#e8b64c', '#26e894', '#41aae9', '#5d6879'][i];
+        return '<span><s style="background:' + col + '"></s>' + b.k + ' <em>' + b.n + ' 个 · ' + f.num(b.q) + '</em></span>';
+      }).join('');
+      var bandHtml = '<div class="hk-bands"><div class="hk-bt">' + bandBar + '</div><div class="hk-lg">' + bandLg + '</div>' +
+        '<div class="hk-note">条形按地址个数分配；分档按持仓占比划分，采样前 ' + (stt.sampled || hv.rows.length) + ' 名</div></div>';
+
+      /* 工具条 */
+      var barHtml = '<div class="hk-bar"><input id="hkQ" class="hk-q" value="' + (hk.q || '') + '" placeholder="搜地址，看排第几">' +
+        '<button data-hksort="val" class="' + (hk.sort === 'val' ? 'on' : '') + '">持仓</button>' +
+        '<button data-hksort="d24" class="' + (hk.sort === 'd24' ? 'on' : '') + '">24h</button>' +
+        '<button data-hkf="' + (hk.fil === 'p' ? 'all' : 'p') + '" class="' + (hk.fil === 'p' ? 'on' : '') + '">只看个人</button></div>';
+
+      /* 表格 */
+      var tb = shown.map(function (r) {
+        var d24 = '';
+        if (r.d24 != null) {
+          d24 = '<b class="hk-d24 ' + (r.d24 >= 0 ? 'up' : 'down') + '">' + (r.d24 >= 0 ? '+' : '-') + f.num(Math.abs(r.d24)) + '</b>';
+        } else if (r.fresh) {
+          d24 = '<b class="hk-d24 fresh">新进</b>';
+        }
+        return '<tr class="hk-tr" data-hcp="' + r.addr + '">' +
+          '<td style="color:#5d6879">' + r.rank + '</td>' +
+          '<td class="mono" style="color:#8fa4bb"><span class="ad-cp" data-cp="' + r.addr + '">' + f.addr(r.addr) + '</span>' +
+          '<em class="hk-tagl' + (r.t === 'c' ? ' c' : '') + '">' + r.lbl + '</em>' + d24 + '</td>' +
+          '<td class="mono" style="text-align:right">' + f.num(r.val) + '</td>' +
+          '<td class="mono" style="text-align:right;color:#5d6879">' + (r.pct ? r.pct.toFixed(2) + '%' : '—') + '</td>' +
+          '<td class="hk-ar">›</td></tr>';
+      }).join('') || '<tr><td colspan="5" style="text-align:center;color:#5d6879;padding:16px 0">没有匹配的地址</td></tr>';
+
+      var moreBtn = showN < list.length
+        ? '<button class="hk-more" data-hkmore="1">再看 ' + Math.min(100, list.length - showN) + ' 个（共 ' + list.length + '）</button>' : '';
+      var cntLine = q ? '<div class="hk-note">匹配 ' + list.length + ' 个地址' + (list.length ? '，最靠前第 ' + list[0].rank + ' 名' : '') + '</div>' : '';
+
       holdersView = '<div class="sec"><div class="sec-hd"><h2>持币人</h2><span class="sub">HOLDERS</span>' +
         '<div class="r">' + f.num(hv.count) + ' 个地址</div></div>' +
-        '<div class="rows2">' +
-        '<div class="r2"><span>总供应量</span><b>' + (hv.supply > 0 ? f.num(hv.supply) + ' ' + hv.sym : '—') + '</b></div>' +
-        '<div class="r2"><span>前 10 合计</span><b>' + (hv.supply > 0 ? p10.toFixed(2) + '%' : '—') + '</b></div>' +
-        '</div>' +
-        '<div class="hwrap"><table class="tbl mkd-tbl"><thead><tr><th>#</th><th>地址</th><th style="text-align:right">持仓</th><th style="text-align:right">占比</th></tr></thead><tbody>' +
-        hv.rows.slice(0, 100).map(function (r) {
-          return '<tr><td style="color:#5d6879">' + r.rank + '</td>' +
-            '<td class="mono" style="color:#8fa4bb"><span class="ad-cp" data-cp="' + r.addr + '">' + f.addr(r.addr) + '</span></td>' +
-            '<td class="mono" style="text-align:right">' + f.num(r.val) + '</td>' +
-            '<td class="mono" style="text-align:right;color:#5d6879">' + (r.pct ? r.pct.toFixed(2) + '%' : '—') + '</td></tr>';
-        }).join('') + '</tbody></table></div>' +
-        '<div class="note">数据源 scan.eni.top，按余额降序，展示前 100 名（可上下滑动查看）。</div></div>';
+        row1 + row2 + bandHtml + barHtml + cntLine +
+        '<div class="hwrap"><table class="tbl mkd-tbl"><thead><tr><th>#</th><th>地址 / 类型</th>' +
+        '<th style="text-align:right">持仓</th><th style="text-align:right">占比</th><th></th></tr></thead><tbody>' +
+        tb + '</tbody></table></div>' + moreBtn +
+        '<div class="note">数据源 scan.eni.top，按余额降序，采样前 ' + (stt.sampled || hv.rows.length) +
+        ' 名；合约标签来自已知地址库，其余按个人计。24h 变化以本机每日快照对比，首日无历史。</div></div>';
     }
 
     /* ---- 详情视图 ---- */
@@ -5465,8 +5653,32 @@ window.ENI = window.ENI || {};
   };
 
   document.addEventListener('input', function (e) {
-    var t = e.target;
-    if (t && t.id === 'hcIn') E.holdCalc(t.value);
+    var el = e.target;
+    if (el && el.id === 'v4xq') { E.ui.xq = el.value; return; }
+    if (el && el.id === 'v4tin') { E.ui.tin = el.value; return; }
+    if (el && (el.id === 'v4lbuy' || el.id === 'v4ltiers')) {
+      if (el.id === 'v4lbuy') E.ui.ladBuy = el.value;
+      else E.ui.ladTiers = el.value;
+      if (E.ladRefresh) E.ladRefresh();
+      return;
+    }
+    if (!el || !el.dataset || !el.dataset.tbf) return;
+    if (E.tpCalc) E.tpCalc();
+  });
+  document.addEventListener('input', function (e) {
+    var tg = e.target;
+    if (tg && tg.id === 'v4csaddr' && E.cs) E.cs.draft = tg.value;
+    if (tg && tg.id === 'hkQ') {
+      E.ui.hk.q = tg.value;
+      clearTimeout(window.__hkQt);
+      window.__hkQt = setTimeout(function () {
+        var sy = window.scrollY || 0, v = E.ui.hk.q;
+        render();
+        var el2 = document.getElementById('hkQ');
+        if (el2) { el2.focus(); el2.value = v; try { el2.setSelectionRange(v.length, v.length); } catch (x) {} }
+        window.scrollTo(0, sy);
+      }, 450);
+    }
   });
   document.addEventListener('click', function (e) {
     var b = (e.target && e.target.closest) ? e.target.closest('[data-hcv]') : null;
@@ -7802,7 +8014,7 @@ window.ENI = window.ENI || {};
     if (tg && tg.id === 'v4csaddr' && E.cs) E.cs.draft = tg.value;
   });
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-cp],[data-csf],[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
+    var t = e.target.closest('[data-cp],[data-csf],[data-atab],[data-rseg],[data-wadd],[data-wdel],[data-btf],[data-big],[data-bigback],[data-whale],[data-whaleback],[data-bth],[data-wrescan],[data-wmore],[data-tpadd],[data-tpdel],[data-msort],[data-go],[data-jump],[data-pair],[data-mkt],[data-mktback],[data-mstar],[data-mseg],[data-mcopy],[data-mkdn],[data-side-entry],[data-tf],[data-day],[data-ind],[data-csub],[data-csgo],[data-asub],[data-hodl],[data-side],[data-watch],[data-delsave],[data-deladdr],[data-iv],[data-tool],[data-open],[data-see],[data-addr],[data-addrback],[data-atf],[data-hdt],[data-hback],[data-hscan],[data-fanopen],[data-fan],[data-fanclose],[data-xtab],[data-xtx],[data-xblk],[data-xgo],[data-xback],[data-ntab],[data-nlang],[data-npt],[data-nreload],[data-nback],[data-tmtab],[data-ttok],[data-tside],[data-tname],[data-tdel],[data-tback],[data-hcp],[data-hksort],[data-hkf],[data-hkmore],#v4xgo,#v4tgo,#v4calc,#v4save,#v4reset,#v4addrAdd');
     if (!t) return;
 
     if (t.dataset.cp) { copyText(t.dataset.cp, '地址已复制', t.dataset.cp); return; }
@@ -7933,6 +8145,32 @@ window.ENI = window.ENI || {};
     if (t.dataset.csgo) {
       var csi = document.getElementById('v4csaddr');
       if (E.csGo) E.csGo(csi ? csi.value : '');
+      return;
+    }
+    if (t.dataset.hcp) {
+      if (E.cs) E.cs.draft = t.dataset.hcp;
+      if (E.csGo) E.csGo(t.dataset.hcp);
+      return;
+    }
+    if (t.dataset.hksort) {
+      var hsy = window.scrollY || 0;
+      E.ui.hk.sort = t.dataset.hksort;
+      render();
+      setTimeout(function () { window.scrollTo(0, hsy); }, 0);
+      return;
+    }
+    if (t.dataset.hkf) {
+      var hfy = window.scrollY || 0;
+      E.ui.hk.fil = t.dataset.hkf;
+      render();
+      setTimeout(function () { window.scrollTo(0, hfy); }, 0);
+      return;
+    }
+    if (t.dataset.hkmore) {
+      var hmy = window.scrollY || 0;
+      E.ui.hk.show = (E.ui.hk.show || 100) + 100;
+      render();
+      setTimeout(function () { window.scrollTo(0, hmy); }, 0);
       return;
     }
     if (t.dataset.csub) { E.ui.chainSub = t.dataset.csub; render(); return; }
