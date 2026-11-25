@@ -1459,6 +1459,15 @@ body.whalepage .pairs{display:none}
 .hk-src .hk-note{padding:6px 0 0}
 .hk-sload{display:block;padding:9px 0;font-size:11px;color:#5d6879}
 
+
+/* ---- 分享卡片 ---- */
+.sc-btn{border:1px solid rgba(240,181,74,.42);background:rgba(240,181,74,.12);color:#FFD37A;font-size:12px;letter-spacing:.5px;padding:5px 11px;border-radius:8px;font-weight:600;vertical-align:middle}
+.sc-btn:active{background:rgba(240,181,74,.24)}
+.mkd-card{border:1px solid rgba(240,181,74,.42);background:rgba(240,181,74,.12);color:#FFD37A;font-size:12px;font-weight:600;width:30px;height:30px;border-radius:9px;margin-right:8px;padding:0;line-height:28px;text-align:center}
+.mkd-card:active{background:rgba(240,181,74,.26)}
+.sc-row{padding:10px 12px 2px;display:flex;justify-content:flex-end}
+.sc-row .sc-btn{padding:7px 14px;font-size:12.5px}
+
 </style>
 </head>
 <body>
@@ -5839,6 +5848,10 @@ window.ENI = window.ENI || {};
     }
     return null;
   }
+  E.hd4 = hd4;
+  E.hdPrev = hdPrev;
+  E.hdDay = hdDay;
+
   function hdDlt(cur, prevVal, prevDay) {
     if (prevVal == null || !isFinite(prevVal)) return '<em class="gray">较昨日 —</em>';
     var lab = '较昨日';
@@ -8544,6 +8557,778 @@ window.ENI = window.ENI || {};
       ('0' + u.getHours()).slice(-2) + ':' + ('0' + u.getMinutes()).slice(-2) + ':' + ('0' + u.getSeconds()).slice(-2);
   }, 1000);
 })();
+</script>
+
+<script>
+/* SC_CARDS_INLINE v1 */
+/* share.js — 一键分享卡片（纯 canvas 绘制，1080×1440，2x 导出） */
+(function () {
+  var E = window.ENI;
+  if (!E) return;
+  var W = 1080, H = 1440, S = 2;
+
+  var CL = {
+    bg: '#05090D', text: '#E6EFF6', white: '#FFFFFF', dim: '#7C93A7', dim2: '#5C7387',
+    acc: '#35D39A', accDim: '#42E0A8', gold: '#F0B54A', goldLt: '#FFD37A',
+    blue: '#4FA8F5', blueLt: '#6FB6F7', line: 'rgba(255,255,255,0.07)'
+  };
+  var KIND_COL = {
+    buy: '#35D39A', p2p: '#4FA8F5', bridge: '#E8B64C', air: '#B88CF0',
+    cn: '#9FB6C9', mint: '#EF6B6B', other: '#7C93A7'
+  };
+  var KIND_LAB = {
+    buy: 'DEX 路由买入', p2p: '钱包间转账', bridge: '跨链桥入金', air: '空投派发',
+    cn: '代币合约派发', mint: '铸造', other: '其它来源'
+  };
+  var KIND_HINT = {
+    buy: '交易池 / 路由合约直买', p2p: '其它个人地址直接划转', bridge: '从跨链桥转入',
+    air: '空投合约派发', cn: '代币合约直接派发', mint: '铸造得到', other: '其它合约'
+    };
+
+  function nf(v, d) {
+    var x = Number(v);
+    if (!isFinite(x)) return '—';
+    return x.toFixed(d == null ? 0 : d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  function short(a) {
+    a = String(a || '');
+    return a.length > 14 ? a.slice(0, 6) + '…' + a.slice(-4) : a;
+  }
+  function dt(ts) {
+    var d = new Date(ts * 1000);
+    function p(n) { return n < 10 ? '0' + n : '' + n; }
+    return (d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function dtFull(ts) {
+    var d = new Date(ts * 1000);
+    function p(n) { return n < 10 ? '0' + n : '' + n; }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function ago(ts) {
+    var s = Date.now() / 1000 - ts;
+    if (s < 3600) return Math.max(1, Math.round(s / 60)) + ' 分钟前';
+    if (s < 86400) return Math.round(s / 3600) + ' 小时前';
+    return Math.round(s / 86400) + ' 天前';
+  }
+
+  /* ---------- 绘图原语 ---------- */
+  function rr(g, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.lineTo(x + w - r, y); g.arcTo(x + w, y, x + w, y + r, r);
+    g.lineTo(x + w, y + h - r); g.arcTo(x + w, y + h, x + w - r, y + h, r);
+    g.lineTo(x + r, y + h); g.arcTo(x, y + h, x, y + h - r, r);
+    g.lineTo(x, y + r); g.arcTo(x, y, x + r, y, r);
+    g.closePath();
+  }
+  function font(size, weight, mono) {
+    return (weight || 400) + ' ' + size + 'px ' + (mono ? '"Helvetica Neue",Arial' : '"PingFang SC","Microsoft YaHei",sans-serif');
+  }
+  function T(g, s, x, top, size, color, weight, mono) {
+    g.font = font(size, weight, mono);
+    g.fillStyle = color || CL.text;
+    g.fillText(String(s), x, top + size * 0.80);
+  }
+  function TR(g, s, right, top, size, color, weight, mono) {
+    g.font = font(size, weight, mono);
+    g.fillStyle = color || CL.text;
+    g.fillText(String(s), right - g.measureText(String(s)).width, top + size * 0.80);
+  }
+  function TC(g, s, cx, top, size, color, weight) {
+    g.font = font(size, weight);
+    g.fillStyle = color || CL.text;
+    g.fillText(String(s), cx - g.measureText(String(s)).width / 2, top + size * 0.80);
+  }
+    /* 多段混排：parts=[{t,c,w}] */
+  function MIX(g, parts, x, top, size) {
+    var cx = x;
+    parts.forEach(function (p) {
+      g.font = font(p.sz || size, p.w || 400, p.mono);
+      g.fillStyle = p.c || CL.text;
+      g.fillText(p.t, cx, top + (p.sz || size) * 0.80);
+      cx += g.measureText(p.t).width;
+    });
+  }
+  function panel(g, x, y, w, h, r) {
+    var lg = g.createLinearGradient(0, y, 0, y + h);
+    lg.addColorStop(0, 'rgba(255,255,255,0.052)');
+    lg.addColorStop(1, 'rgba(255,255,255,0.014)');
+    rr(g, x, y, w, h, r || 16);
+    g.fillStyle = lg; g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.075)'; g.lineWidth = 1; g.stroke();
+  }
+  function cellBox(g, x, y, w, h) {
+    rr(g, x, y, w, h, 14);
+    g.fillStyle = 'rgba(255,255,255,0.035)'; g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.06)'; g.lineWidth = 1; g.stroke();
+  }
+  function chipRect(g, s, x, y, col) {
+    g.font = font(13, 400);
+    var w = g.measureText(s).width + 28;
+    rr(g, x, y, w, 36, 8);
+    g.fillStyle = col + '1a'; g.fill();
+    g.strokeStyle = col + '66'; g.lineWidth = 1; g.stroke();
+    T(g, s, x + 14, y + 9, 13, col);
+    return w;
+  }
+  function bar(g, x, y, w, h, col, rad) {
+    rr(g, x, y, w, h, rad == null ? h / 2 : rad);
+    g.fillStyle = col; g.fill();
+  }
+
+  /* ---------- 页面骨架 ---------- */
+  function scaffold(g, o) {
+    var bg = g.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#081019'); bg.addColorStop(1, '#05090D');
+    g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    var gl = g.createRadialGradient(880, 40, 0, 880, 40, 700);
+    gl.addColorStop(0, o.glow || 'rgba(53,211,154,0.16)');
+    gl.addColorStop(1, 'rgba(53,211,154,0)');
+    g.fillStyle = gl; g.fillRect(0, 0, W, H);
+    var gl2 = g.createRadialGradient(120, 1000, 0, 120, 1000, 560);
+    gl2.addColorStop(0, 'rgba(28,120,200,0.13)'); gl2.addColorStop(1, 'rgba(28,120,200,0)');
+    g.fillStyle = gl2; g.fillRect(0, 0, W, H);
+
+    rr(g, 32, 32, 1016, 1376, 24);
+    g.strokeStyle = 'rgba(255,255,255,0.06)'; g.lineWidth = 1; g.stroke();
+
+    /* 品牌行 */
+    var lg = g.createLinearGradient(72, 60, 112, 100);
+    lg.addColorStop(0, '#35D39A'); lg.addColorStop(1, '#1B8FD1');
+    rr(g, 72, 62, 40, 40, 11); g.fillStyle = lg; g.fill();
+    TC(g, 'E', 92, 70, 22, '#03110C', 700);
+    g.font = font(19, 700); g.fillStyle = '#DCE9F2';
+    var bn = 'ENITools';
+    var bx = 128;
+    for (var i = 0; i < bn.length; i++) { g.fillText(bn[i], bx, 66 + 15); bx += g.measureText(bn[i]).width + 4; }
+    T(g, 'ENI CHAIN TERMINAL', 128, 90, 12, CL.dim2);
+    TR(g, o.stamp, 1008, 68, 13, '#69809A');
+
+    g.beginPath(); g.moveTo(72, 118); g.lineTo(1008, 118);
+    g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1; g.stroke();
+
+    T(g, o.tag, 84, 152, 15, o.accent || CL.gold);
+    g.beginPath(); g.arc(78, 160, 3, 0, Math.PI * 2);
+    g.fillStyle = o.accent || CL.gold; g.fill();
+  }
+
+  function foot(g, left, right) {
+    T(g, left, 72, 1314, 12.5, '#5A7185');
+    TR(g, right, 1008, 1314, 12.5, '#5A7185');
+    g.beginPath(); g.moveTo(72, 1344); g.lineTo(1008, 1344);
+    g.strokeStyle = 'rgba(255,255,255,0.06)'; g.lineWidth = 1; g.stroke();
+    T(g, 'ENITools', 72, 1356, 13, CL.acc);
+    T(g, ' ｜ 输入任意地址或币种，都能一键生成这张卡', 130, 1356, 13, '#6C8AA0');
+  }
+
+  function conclBox(g, y, h, tag, lines) {
+    rr(g, 72, y, 936, h, 16);
+    var lg = g.createLinearGradient(72, 0, 1008, 0);
+    lg.addColorStop(0, 'rgba(240,181,74,0.10)'); lg.addColorStop(1, 'rgba(240,181,74,0.015)');
+    g.fillStyle = lg; g.fill();
+    g.strokeStyle = 'rgba(240,181,74,0.22)'; g.lineWidth = 1; g.stroke();
+    g.fillStyle = CL.gold; g.fillRect(72, y + 1, 4, h - 2);
+    T(g, tag, 100, y + 22, 12, CL.gold);
+    lines.forEach(function (p, i) {
+      MIX(g, p, 100, y + 52 + i * 32, 17.5);
+    });
+  }
+
+  /* ---------- 卡型 1：单地址画像 ---------- */
+  function drawAddr(st) {
+    var c = document.createElement('canvas');
+    c.width = W * S; c.height = H * S;
+    var g = c.getContext('2d');
+    g.scale(S, S);
+    scaffold(g, {
+      accent: CL.gold, glow: 'rgba(53,211,154,0.16)',
+      tag: 'WALLET DNA · 持币来源画像',
+      stamp: 'EVBC 持币人 · 链上快照 ' + dtFull(Date.now() / 1000)
+    });
+
+    var kinds = st.kinds || {};
+    var list = Object.keys(kinds).map(function (k) { return { k: k, q: kinds[k] }; })
+      .sort(function (a, b) { return b.q - a.q; });
+    var top2 = list.slice(0, 2);
+    var rest = list.slice(2).reduce(function (s, x) { return s + x.q; }, 0);
+    if (rest > 0.0001) top2.push({ k: 'other', q: rest });
+    var left = st.left || top2.reduce(function (s, x) { return s + x.q; }, 0);
+    var pct1 = left > 0 ? top2[0].q / left * 100 : 0;
+
+    var supply = (E.hold && E.hold.supply) || 0;
+    var share = supply > 0 ? st.bal / supply * 100 : 0;
+    var bal = st.bal || left;
+
+    T(g, '这 ' + nf(bal, 2) + ' EVBC，是从哪来的？', 72, 176, 44, CL.white, 700);
+    T(g, '按时间逐笔重放这条地址的全部流水，把每一枚没卖掉的币追回它的第一手出处', 72, 248, 17, CL.dim);
+
+    /* 地址条 */
+    panel(g, 72, 300, 936, 92, 14);
+    g.beginPath(); g.arc(105, 345, 7, 0, Math.PI * 2);
+    var dg = g.createLinearGradient(98, 338, 112, 352);
+    dg.addColorStop(0, '#35D39A'); dg.addColorStop(1, '#1B8FD1');
+    g.fillStyle = dg; g.fill();
+    T(g, st.addr, 126, 330, 21, '#CFE2EF', 400, true);
+    T(g, 'EVM ADDRESS · 全量 ' + nf(st.covered || 0, 0) + ' 笔代币流水已解析', 126, 360, 12, CL.dim2);
+    var c1 = '持币排名 #' + (st.rank || '—'), c2 = (st.contract ? '合约地址' : '非合约 个人钱包');
+    g.font = font(13, 400);
+    var w1 = g.measureText(c1).width + 28, w2 = g.measureText(c2).width + 28;
+    chipRect(g, c1, 1008 - w1, 328, CL.gold);
+    chipRect(g, c2, 1008 - w1 - 8 - w2, 328, CL.acc);
+
+    /* 主数字 */
+    T(g, nf(bal, 2), 70, 418, 68, CL.white, 600, true);
+    var bw = (function () { g.font = font(68, 600, true); return g.measureText(nf(bal, 2)).width; })();
+    T(g, 'EVBC 当前余额', 78 + bw, 452, 20, '#8FA6B9');
+    var meta = '占总供应量 ' + (share > 0 ? share.toFixed(3) + '%' : '—') +
+      ' ｜ 累计转入 ' + nf(st.inN, 0) + ' 笔 ｜ 累计转出 ' + nf(st.outN, 0) + ' 笔';
+    T(g, meta, 72, 508, 15, '#70889C');
+
+    /* 来源面板 */
+    panel(g, 72, 560, 936, 266);
+    T(g, '剩余筹码来源构成', 100, 580, 16, '#CFE1EE', 700);
+    T(g, 'FIFO 先进先出扣减', 272, 583, 13, CL.dim2);
+    TR(g, 'COST BASIS TRACE · 100% 覆盖', 980, 583, 12, CL.dim2);
+
+    var bx = 100, byW = 880;
+    rr(g, bx, 620, byW, 22, 11); g.fillStyle = '#101B24'; g.fill();
+    var cur = bx, tot = left || 1;
+    top2.forEach(function (x) {
+      var w = x.q / tot * byW;
+      if (w > 0.5) bar(g, cur, 620, w, 22, KIND_COL[x.k] || CL.dim, 11);
+      cur += w;
+    });
+
+    /* 图例行 */
+    var ly = 660;
+    top2.forEach(function (x, i) {
+      var y = ly + i * 50, col = KIND_COL[x.k] || CL.dim;
+      rr(g, 100, y + 14, 12, 12, 3); g.fillStyle = col; g.fill();
+      T(g, KIND_LAB[x.k] || x.k, 126, y + 5, 15, '#D7E6F1');
+      var cnt = x.k === 'other' ? '' : ('  ' + nf((st.kindN && st.kindN[x.k]) || 0, 0) + ' 笔');
+      T(g, cnt, 232, y + 8, 11, CL.dim2);
+      T(g, nf(x.q, 2), 400, y + 2, 21, CL.white, 400, true);
+      T(g, (x.q / tot * 100).toFixed(1) + '%', 600, y + 6, 18, col, 700);
+      TR(g, KIND_HINT[x.k] || '', 1008, y + 8, 12.5, '#70889C');
+    });
+    g.beginPath(); g.moveTo(100, 762); g.lineTo(1000, 762);
+    g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 1; g.stroke();
+    T(g, '按时间顺序扣减卖出与转出，剩下的才是真实没卖掉的筹码；已抓完全部流水，无截断。', 100, 778, 12.5, '#59708A');
+
+    /* 三格 */
+    var cells = [
+      ['累计流入', nf(st.inTot, 2), nf(st.inN, 0) + ' 笔转入记录'],
+      ['累计流出', nf(st.outTot, 2), (nf(st.outN, 0)) + ' 笔，卖出与转出合计'],
+      ['累计吞吐 / 当前余额', ((st.inTot + st.outTot) / (bal || 1)).toFixed(1) + '×', '每 1 枚持仓背后走过 N 枚']
+    ];
+    cells.forEach(function (c3, i) {
+      var x = 72 + i * 320;
+      cellBox(g, x, 852, 296, 112);
+      T(g, c3[0], x + 22, 872, 12, CL.dim2);
+      T(g, c3[1], x + 22, 894, 23, i === 2 ? CL.goldLt : '#EFF7FC', 400, true);
+      T(g, c3[2], x + 22, 930, 12, '#7C93A7');
+    });
+
+    /* 时间线 */
+    g.fillStyle = 'rgba(53,211,154,0.55)'; g.fillRect(78, 1010, 2, 72);
+    g.beginPath(); g.arc(79, 1010, 7, 0, Math.PI * 2); g.fillStyle = CL.acc; g.fill();
+    g.beginPath(); g.arc(79, 1062, 7, 0, Math.PI * 2); g.fillStyle = CL.blue; g.fill();
+    T(g, dtFull(st.inT0), 104, 1002, 17, '#CFE1EE');
+    T(g, '首次获得 · 首笔 ' + nf(st.firstQty || 0, 0) + ' EVBC', 320, 1004, 13, CL.dim);
+    T(g, dtFull(st.inT1), 104, 1054, 17, '#CFE1EE');
+    T(g, '最近一次转入 · 之后无新动作即视为停滞', 320, 1056, 13, CL.dim);
+
+    var line1 = [
+      { t: (pct1).toFixed(1) + '% 的剩余筹码', c: CL.goldLt, w: 700, t2: '' },
+    ];
+    conclBox(g, 1108, 180, '一句话结论', [
+      [{ t: pct1.toFixed(1) + '% 的剩余筹码是', c: CL.white }, { t: '在 DEX 里一笔笔买出来的', c: CL.goldLt, w: 700 }, { t: '，其余来自钱包转账；', c: CL.white }],
+      [{ t: '累计吞吐 ' + (nf((st.inTot + st.outTot) / 1e4, 1)) + ' 万 EVBC，相当于当前余额的 ' + ((st.inTot + st.outTot) / (bal || 1)).toFixed(0) + ' 倍 ——', c: CL.white }],
+      [{ t: '这是波段型的地址，不是长线锁仓者。', c: CL.goldLt, w: 700 }]
+    ]);
+
+    foot(g, '数据源 scan.eni.top ｜ EVBC 合约 0x70348b77…045f', 'FIFO 口径，与 ENITools「持仓来源」一致');
+    return c;
+  }
+
+  /* ---------- 卡型 2：币种日报 ---------- */
+  function drawDaily() {
+    var pair = E.PAIRS[E.activePair] || {}, base = pair.base || 'EVBC', dp = pair.dp || 4;
+    var d = E.data || {}, trades = d.trades || [], price = d.price || 0;
+    var s24 = E.stats24(trades, price);
+    var buyN = 0, sellN = 0;
+    var from = Date.now() / 1000 - 86400;
+    trades.forEach(function (t) { if (t.ts >= from) { if (t.side === 'buy') buyN++; else sellN++; } });
+
+    /* 逐小时收盘 */
+    var hrs = [];
+    trades.forEach(function (t) {
+      var k = Math.floor(t.ts / 3600);
+      var o = hrs[k];
+      if (!o) hrs[k] = { k: k, c: t.price };
+      else if (t.ts >= (o.t || 0)) { o.c = t.price; o.t = t.ts; }
+    });
+    var keys = Object.keys(hrs).map(Number).sort().slice(-24);
+    var vals = keys.map(function (k) { return hrs[k].c; });
+    if (vals.length < 6) vals = vals.concat([price]);
+
+    var c = document.createElement('canvas');
+    c.width = W * S; c.height = H * S;
+    var g = c.getContext('2d');
+    g.scale(S, S);
+    scaffold(g, {
+      accent: CL.gold, glow: 'rgba(53,211,154,0.16)',
+      tag: 'MARKET DAILY · 币种日报',
+      stamp: base + '/USDT · 24h 快照 ' + dtFull(Date.now() / 1000)
+    });
+
+    var chg = s24.chg || 0;
+    var parts = [
+      { t: base + ' 这 24 小时：', c: CL.white, w: 700 },
+      { t: '$' + price.toFixed(dp), c: CL.accDim, w: 600 },
+      { t: '，' + (chg >= 0 ? '涨 ' : '跌 ') + Math.abs(chg).toFixed(2) + '%', c: CL.white, w: 700 }
+    ];
+    MIX(g, parts, 72, 176, 44);
+    T(g, '成交 ' + nf(s24.trades, 0) + ' 笔、$' + nf(s24.qv, 0) + '，买盘占 ' +
+      (s24.trades ? Math.round(buyN / s24.trades * 100) : 0) + '%；区间 ' + s24.lo.toFixed(dp) + ' – ' + s24.hi.toFixed(dp),
+      72, 248, 17, CL.dim);
+
+    /* 折线面板 */
+    panel(g, 72, 280, 936, 340);
+    T(g, '24H 价格走势', 100, 300, 16, '#CFE1EE', 700);
+    T(g, '逐小时收盘 · 本地时间', 232, 303, 13, CL.dim2);
+    TR(g, 'HIGH ' + s24.hi.toFixed(dp) + ' · LOW ' + s24.lo.toFixed(dp), 980, 303, 12, CL.dim2);
+
+    var x0 = 98, x1 = 946, y0 = 350, y1 = 512;
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    if (mx - mn < 1e-9) { mx = mn + 1e-6; }
+    var P = vals.map(function (v, i) {
+      return [x0 + (x1 - x0) * i / Math.max(1, vals.length - 1), y1 - (v - mn) / (mx - mn) * (y1 - y0)];
+    });
+    [0.105, 0.115, 0.125].forEach(function (gv) {
+      if (gv < mn || gv > mx) return;
+      var gy = y1 - (gv - mn) / (mx - mn) * (y1 - y0);
+      g.beginPath(); g.moveTo(x0, gy); g.lineTo(x1, gy);
+      g.setLineDash([4, 6]); g.strokeStyle = 'rgba(255,255,255,0.07)'; g.lineWidth = 1; g.stroke();
+      g.setLineDash([]);
+    });
+    var ag = g.createLinearGradient(0, y0, 0, y1);
+    ag.addColorStop(0, 'rgba(53,211,154,0.28)'); ag.addColorStop(1, 'rgba(53,211,154,0)');
+    g.beginPath();
+    g.moveTo(P[0][0], y1);
+    P.forEach(function (p) { g.lineTo(p[0], p[1]); });
+    g.lineTo(P[P.length - 1][0], y1);
+    g.closePath(); g.fillStyle = ag; g.fill();
+    g.beginPath();
+    P.forEach(function (p, i) { if (i === 0) g.moveTo(p[0], p[1]); else g.lineTo(p[0], p[1]); });
+    g.strokeStyle = CL.acc; g.lineWidth = 2.6; g.stroke();
+    var lp = P[P.length - 1];
+    g.beginPath(); g.arc(lp[0], lp[1], 4.5, 0, Math.PI * 2); g.fillStyle = CL.acc; g.fill();
+
+    var loI = 0, hiI = 0;
+    vals.forEach(function (v, i) { if (v === mn) loI = i; if (v === mx) hiI = i; });
+    T(g, '低点 ' + mn.toFixed(dp), P[loI][0] - 8, P[loI][1] + 12, 11, '#8FA6B9');
+    T(g, '高点 ' + mx.toFixed(dp), P[hiI][0] - 70, P[hiI][1] - 28, 11, CL.accDim);
+    T(g, keys.length ? dt(keys[0] * 3600) : '', x0, 552, 11, '#4E6577');
+    TR(g, keys.length ? dt(keys[keys.length - 1] * 3600) : '', x1, 552, 11, '#4E6577');
+
+    /* 四格 */
+    var c4 = [
+      ['最新价', '$' + price.toFixed(dp), '24h 开 ' + s24.first.toFixed(dp) + '，' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', CL.accDim],
+      ['24H 区间', s24.lo.toFixed(dp) + '–' + s24.hi.toFixed(dp), '振幅 ' + (s24.amp || 0).toFixed(1) + '%', '#EFF7FC'],
+      ['成交额', '$' + nf(s24.qv, 0), nf(s24.trades, 0) + ' 笔，均笔 $' + (s24.avg ? nf(s24.avg, 1) : '—'), '#EFF7FC'],
+      ['买 / 卖笔数', buyN + ' / ' + sellN, '买占 ' + (s24.trades ? Math.round(buyN / s24.trades * 100) : 0) + '%', '#EFF7FC']
+    ];
+    c4.forEach(function (x, i) {
+      var cx = 72 + i * 239;
+      cellBox(g, cx, 648, 219, 104);
+      T(g, x[0], cx + 20, 666, 12, CL.dim2);
+      T(g, x[1], cx + 20, 690, i === 1 ? 19 : 23, x[3], 400, true);
+      T(g, x[2], cx + 20, 722, 12, '#7C93A7');
+    });
+
+    /* 链上 */
+    var C = E.hold && E.hold.calc, nq = C ? C.nq : 0, nAll = C ? C.nAll : 0;
+    panel(g, 72, 776, 936, 150);
+    T(g, '链上同步', 100, 794, 16, '#CFE1EE', 700);
+    T(g, '持币结构 · 与本机全量扫描同源', 196, 797, 13, CL.dim2);
+    g.beginPath(); g.moveTo(100, 834); g.lineTo(980, 834);
+    g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 1; g.stroke();
+    T(g, '持币地址', 100, 852, 13, CL.dim2);
+    T(g, nf(nAll, 0), 176, 844, 26, '#EFF7FC', 600, true);
+    T(g, '合格 ≥100', 404, 852, 13, CL.dim2);
+    T(g, nf(nq, 0), 480, 844, 26, '#EFF7FC', 600, true);
+    T(g, '前 10 集中度', 676, 852, 13, CL.dim2);
+    var p10 = 0;
+    if (E.hold && E.hold.rows && E.hold.supply) {
+      p10 = E.hold.rows.slice(0, 10).reduce(function (s, r) { return s + (r.v || 0); }, 0) / E.hold.supply * 100;
+    }
+    if (p10) T(g, p10.toFixed(2) + '%', 790, 844, 26, CL.goldLt, 600, true);
+    else T(g, '加载持币人页后显示', 790, 852, 13, CL.dim2);
+    T(g, '前 10 含路由与交易池合约，剔除合约的个人集中度需在持币人页查看', 100, 886, 12, '#566E82');
+
+    conclBox(g, 956, 206, '一句话结论', [
+      [{ t: '24 小时区间 ' + s24.lo.toFixed(dp) + ' – ' + s24.hi.toFixed(dp) + '，振幅 ' + (s24.amp || 0).toFixed(0) + '%；', c: CL.white }],
+      [{ t: nf(s24.trades, 0) + ' 笔里 ' + buyN + ' 笔是买，买盘占 ' + (s24.trades ? Math.round(buyN / s24.trades * 100) : 0) + '%。', c: CL.white }],
+      [{ t: '全天成交额 $' + nf(s24.qv, 0) + ' —— 薄池小盘，几笔大单就能推动价格。', c: CL.goldLt, w: 700 }]
+    ]);
+
+    foot(g, '数据源 graph.eni.top ｜ ENIDEX 实时成交', '逐小时收盘 · 与行情页一致');
+    return c;
+  }
+
+  /* ---------- 卡型 3：最佳持币区间 ---------- */
+  function drawBand() {
+    var C = E.hold && E.hold.calc, R = (E.hold && E.hold.radr) || {};
+    if (!C) throw new Error('还没有持币扫描结果，请先到「持币分析」页完成一次全量扫描');
+    var G = C.best || {}, R2 = C.rng || {};
+    var lo = R2.lo || G.v || 0, hi = R2.hi || G.v || 0;
+    var off = R.bestHoldingRange || [];
+    var olo = off.length ? Number(off[0]) : 0, ohi = off.length ? Number(off[1]) : 0;
+    var day = R.businessDate || '';
+    var nq = C.nq || 0, nAll = C.nAll || 0;
+    var bins = E.hd4 ? E.hd4(C) : null;
+    var prev = E.hdPrev ? E.hdPrev() : null;
+    var dq = prev && isFinite(prev.nq) ? nq - prev.nq : null;
+    var da = prev && isFinite(prev.nAll) ? nAll - prev.nAll : null;
+
+    var c = document.createElement('canvas');
+    c.width = W * S; c.height = H * S;
+    var g = c.getContext('2d');
+    g.scale(S, S);
+    scaffold(g, {
+      accent: CL.gold, glow: 'rgba(240,181,74,0.14)',
+      tag: 'HOLD BAND · 最佳持币区间',
+      stamp: '持币分析 · ' + (day || '今日') + ' · 全量扫描'
+    });
+
+    T(g, '最划算的仓位，不在官方建议里', 72, 176, 44, CL.white, 700);
+    T(g, '官方给的是 ' + nf(olo, 0) + ' ~ ' + nf(ohi, 0) + '；按持币算力排名自算，效率峰值落在 ' + nf(G.v, 0) + ' EVBC', 72, 248, 17, CL.dim);
+
+    /* 大数字 */
+    T(g, nf(lo, 0) + ' ~ ' + nf(hi, 0), 70, 296, 62, CL.goldLt, 600, true);
+    var w1 = (function () { g.font = font(62, 600, true); return g.measureText(nf(lo, 0) + ' ~ ' + nf(hi, 0)).width; })();
+    T(g, 'EVBC', 78 + w1, 322, 20, '#8FA6B9');
+    var chip = '效率峰值 ' + nf(G.v, 0) + ' EVBC';
+    g.font = font(13);
+    var cw = g.measureText(chip).width + 32;
+    rr(g, 1008 - cw, 300, cw, 38, 9);
+    g.fillStyle = 'rgba(240,181,74,0.10)'; g.fill();
+    g.strokeStyle = 'rgba(240,181,74,0.45)'; g.lineWidth = 1; g.stroke();
+    T(g, chip, 1008 - cw + 16, 310, 13, CL.goldLt);
+
+    /* 滑轨 */
+    panel(g, 72, 430, 936, 210);
+    T(g, '区间滑轨', 100, 450, 16, '#CFE1EE', 700);
+    T(g, '0 – 350 EVBC · 每个地址的持仓量', 196, 453, 13, CL.dim2);
+    TR(g, "TODAY'S OPTIMAL BAND", 980, 453, 12, CL.dim2);
+
+    var tx0 = 100, tw = 880, vmax = Math.max(350, Math.ceil(hi * 1.5 / 50) * 50);
+    bar(g, tx0, 526, tw, 14, '#101B24', 7);
+    var oL = tx0 + olo / vmax * tw, oW = (ohi - olo) / vmax * tw;
+    bar(g, oL, 526, Math.max(2, oW), 14, '#2C7AC0', 7);
+    var gL = tx0 + lo / vmax * tw, gW = (hi - lo) / vmax * tw;
+    if (gW > 26) {
+      bar(g, gL - 8, 522, gW + 16, 22, CL.goldLt, 11);
+    } else {
+      bar(g, gL - 10, 522, 20, 22, CL.goldLt, 8);
+    }
+    g.fillStyle = 'rgba(240,181,74,0.5)'; g.fillRect(gL + Math.max(0, gW / 2), 504, 2, 66);
+    T(g, (olo ? nf(olo, 0) : '官方') + (ohi ? ' – ' + nf(ohi, 0) : ''), oL - 44, 560, 12, CL.blueLt);
+    T(g, nf(lo, 0) + ' – ' + nf(hi, 0), gL + 24, 560, 12, CL.goldLt);
+    [0, 190, 280, 350].forEach(function (t) {
+      if (t > vmax) return;
+      T(g, nf(t, 0), tx0 + t / vmax * tw - (t === 0 ? 0 : 8), 594, 11, '#4E6577');
+    });
+
+    /* 三格 */
+    var c3 = [
+      ['这一档的持币算力', nf(R2.m || G.m, 0), '按排名计算，不按币数量'],
+      ['每日产出（每地址）', nf(R2.daily || G.daily, 3) + ' EVBC', '约 $' + ((R2.daily || G.daily) * (E.data.price || 0)).toFixed(4)],
+      ['每枚每日效率', (R2.per || 0).toFixed(3) + '%', '全场最高档位']
+    ];
+    c3.forEach(function (x, i) {
+      var cx = 72 + i * 320;
+      cellBox(g, cx, 668, 296, 104);
+      T(g, x[0], cx + 20, 686, 12, CL.dim2);
+      T(g, x[1], cx + 20, 708, 20, i === 2 ? CL.accDim : '#EFF7FC', 400, true);
+      T(g, x[2], cx + 20, 742, 12, '#7C93A7');
+    });
+
+    /* 解释 */
+    var n190 = bins ? bins[0] : 0;
+    var share = nq > 0 && n190 ? (n190 / nq * 100).toFixed(1) : '—';
+    conclBox(g, 816, 196, '为什么是 ' + nf(G.v, 0) + '，而不是官方的 ' + nf(olo, 0) + ' – ' + nf(ohi, 0), [
+      [{ t: '官方区间按项目方口径给；但算力', c: CL.white }, { t: '按排名计算、不看持币数量', c: CL.goldLt, w: 700 }, { t: '。', c: CL.white }],
+      [{ t: '越过最拥挤档 100 – 200（' + nf(n190, 0) + ' 个地址，占 ' + share + '%）之后的那个点，才是效率顶点。', c: CL.white }],
+      [{ t: '所以今日最优落在 ' + nf(lo, 0) + ' – ' + nf(hi, 0) + '：多拿几枚，就跨过了这一大批地址。', c: CL.goldLt, w: 700 }]
+    ]);
+
+    /* 全网 */
+    panel(g, 72, 1050, 936, 124);
+    T(g, '全网状态 · ' + (C.pages || 9) + ' 批扫描全部成功', 100, 1068, 12, CL.dim2);
+    T(g, '合格地址 ≥100', 100, 1096, 13, CL.dim2);
+    T(g, nf(nq, 0), 224, 1086, 26, '#EFF7FC', 600, true);
+    if (dq !== null) T(g, (dq >= 0 ? '+' : '') + nf(dq, 0) + ' 较昨日', 330, 1094, 14, dq >= 0 ? CL.acc : '#EF6B6B');
+    T(g, '全部持币地址', 542, 1096, 13, CL.dim2);
+    T(g, nf(nAll, 0), 646, 1086, 26, '#EFF7FC', 600, true);
+    if (da !== null) T(g, (da >= 0 ? '+' : '') + nf(da, 0) + ' 较昨日', 750, 1094, 14, da >= 0 ? CL.acc : '#EF6B6B');
+
+    foot(g, '口径：官方区间取 eni-radr.com，余额取 scan.eni.top', '今天该拿多少，一张卡讲完');
+    return c;
+  }
+
+  /* ---------- 卡型 4：新增打散 ---------- */
+  function drawDiff() {
+    var C = E.hold && E.hold.calc;
+    if (!C) throw new Error('还没有持币扫描结果，请先到「持币分析」页完成一次全量扫描');
+    var bins = (E.hd4 ? E.hd4(C) : [0, 0, 0, 0]);
+    var prev = E.hdPrev ? E.hdPrev() : null;
+    var pb = prev && prev.bins ? prev.bins : null;
+    var nq = C.nq || 0, nAll = C.nAll || 0, low = Math.max(0, nAll - nq);
+    var pnq = prev && isFinite(prev.nq) ? prev.nq : null;
+    var pnAll = prev && isFinite(prev.nAll) ? prev.nAll : null;
+    var dAll = pnAll === null ? null : nAll - pnAll;
+    var dQ = pnq === null ? null : nq - pnq;
+
+    var c = document.createElement('canvas');
+    c.width = W * S; c.height = H * S;
+    var g = c.getContext('2d');
+    g.scale(S, S);
+    scaffold(g, {
+      accent: '#38BDF8', glow: 'rgba(56,189,248,0.15)',
+      tag: 'SUPPLY DIFFUSION · 新增打散',
+      stamp: '新增打散 · ' + (C.day || '今日') + ' · 全量扫描'
+    });
+
+    var parts = [
+      { t: '今天多了 ', c: CL.white, w: 700 },
+      { t: dAll === null ? nf(nAll, 0) : (dAll >= 0 ? '+' : '') + nf(dAll, 0), c: '#38BDF8', w: 600 },
+      { t: ' 个地址，钱在往中间档挤', c: CL.white, w: 700 }
+    ];
+    MIX(g, parts, 72, 176, 44);
+    var sub = dAll !== null && dAll > 0
+      ? ('新增里 ' + Math.round(Math.max(0, dAll - (dQ || 0)) / dAll * 100) + '% 是持仓不到 100 EVBC 的小号；大户反而在减少')
+      : '和昨日基本持平，增量主要落在中小额档位';
+    T(g, sub, 72, 248, 17, CL.dim);
+
+    T(g, nf(nAll, 0), 70, 292, 60, CL.white, 600, true);
+    var wN = (function () { g.font = font(60, 600, true); return g.measureText(nf(nAll, 0)).width; })();
+    T(g, '个持币地址', 82 + wN, 318, 19, '#8FA6B9');
+    if (dAll !== null) T(g, (dAll >= 0 ? '+' : '') + nf(dAll, 0) + ' 较昨日', 250 + wN, 322, 15, dAll >= 0 ? CL.acc : '#EF6B6B');
+
+    /* 两格 */
+    cellBox(g, 72, 418, 458, 104);
+    T(g, '合格地址 ≥100 EVBC', 92, 436, 12, CL.dim2);
+    T(g, nf(nq, 0), 92, 458, 23, '#EFF7FC', 400, true);
+    if (dQ !== null) T(g, (dQ >= 0 ? '+' : '') + nf(dQ, 0) + (dAll ? '，增量只占新增的 ' + Math.round(Math.max(0, dQ) / Math.max(1, dAll) * 100) + '%' : ''), 92, 492, 12, dQ >= 0 ? CL.acc : '#EF6B6B');
+    cellBox(g, 550, 418, 458, 104);
+    T(g, '未达 100 EVBC', 570, 436, 12, CL.dim2);
+    T(g, nf(low, 0), 570, 458, 23, '#9FB6C9', 400, true);
+    T(g, '占全池 ' + (nAll ? (low / nAll * 100).toFixed(1) : '0') + '%，新增小号都落在这里', 570, 492, 12, '#7C93A7');
+
+    /* 四档 */
+    panel(g, 72, 546, 936, 404);
+    T(g, '按余额分档', 100, 566, 16, '#CFE1EE', 700);
+    T(g, '只统计合格地址 ' + nf(nq, 0) + ' 个', 196, 569, 13, CL.dim2);
+    TR(g, '较昨日变化', 980, 569, 12, CL.dim2);
+
+    var rows = [
+      ['100 – 200', bins[0], '#5FA9E8'],
+      ['201 – 500', bins[1], '#35D39A'],
+      ['501 – 1,000', bins[2], '#F0B54A'],
+      ['1,000 以上', bins[3], '#EF6B6B']
+    ];
+    var sum = rows.reduce(function (s, r) { return s + r[1]; }, 0) || 1;
+    rows.forEach(function (r, i) {
+      var y = 606 + i * 78;
+      g.beginPath(); g.moveTo(100, y); g.lineTo(980, y);
+      g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 1; g.stroke();
+      T(g, r[0], 100, y + 18, 14, '#B9CBD9');
+      T(g, nf(r[1], 0), 262, y + 8, 26, '#EFF7FC', 400, true);
+      T(g, '占 ' + (r[1] / sum * 100).toFixed(1) + '%', 420, y + 18, 14, '#7C93A7');
+      var bw = Math.max(24, r[1] / sum * 230);
+      bar(g, 560, y + 30, bw, 8, r[2], 4);
+      var dv = pb ? r[1] - pb[i] : null;
+      if (dv !== null) T(g, (dv >= 0 ? '+' : '') + nf(dv, 0), 980 - 12, y + 16, 15, dv >= 0 ? CL.acc : '#EF6B6B');
+      else TR(g, '—', 980 - 12, y + 16, 15, CL.dim2);
+    });
+    T(g, '按每个钱包容的 EVBC 余额分档，只算合格地址；较昨日由本机每日快照算出', 100, 912, 12, '#566E82');
+
+    conclBox(g, 960, 206, '一句话结论', [
+      [{ t: dAll ? '新增的 ' + nf(dAll, 0) + ' 个地址里，只有 ' + nf(Math.max(0, dQ || 0), 0) + ' 个持仓过 100，' : '今日增量：', c: CL.white },
+       { t: dAll ? nf(Math.max(0, dAll - (dQ || 0)), 0) + ' 个（' + Math.round(Math.max(0, dAll - (dQ || 0)) / Math.max(1, dAll) * 100) + '%）是小额小号。' : '—', c: CL.goldLt, w: 700 }],
+      [{ t: '1,000 以上 ' + (pb ? (bins[3] - pb[3] >= 0 ? '增加 ' : '减少 ') + Math.abs(bins[3] - pb[3]) + ' 个' : '—') + '，201 – 500 档 ' + (pb ? (bins[1] - pb[1] >= 0 ? '增加 ' : '减少 ') + Math.abs(bins[1] - pb[1]) + ' 个' : '—') + '。', c: CL.white }],
+      [{ t: '筹码正在被拆散、往中间档摊平 —— 不是被大户收集，而是在分发。', c: CL.goldLt, w: 700 }]
+    ]);
+
+    foot(g, '口径：余额取 scan.eni.top，分档只含 ≥100 EVBC', '谁在进场、筹码怎么挪，一张卡看清');
+    return c;
+  }
+
+  /* ---------- 数据装配 ---------- */
+  function payload(kind) {
+    if (kind === 'addr') {
+      var st = E.cs && E.cs.st;
+      if (!st) throw new Error('请先在「币源追踪」里查一个地址，再生成这张卡');
+      if (!st.rank && E.hold && E.hold.rows) {
+        for (var i = 0; i < E.hold.rows.length; i++) {
+          if ((E.hold.rows[i].a || '').toLowerCase() === st.addr) { st.rank = i + 1; break; }
+        }
+      }
+      var list = st.list || [];
+      st.kindN = st.kindN || {};
+      list.forEach(function (x) { if (x.d > 0) { var k = x.k || 'p2p'; st.kindN[k] = (st.kindN[k] || 0) + 1; } });
+      var first = null;
+      for (var j = 0; j < list.length; j++) { if (list[j].d > 0) { first = list[j]; break; } }
+      st.firstQty = first ? first.q : 0;
+      st.inT0 = st.inT0 || (first ? first.ts : Date.now() / 1000);
+      st.contract = !!(st.isContract);
+      return drawAddr(st);
+    }
+    if (kind === 'daily') return drawDaily();
+    if (kind === 'band') return drawBand();
+    if (kind === 'diff') return drawDiff();
+    throw new Error('未知卡片类型');
+  }
+
+  /* ---------- 预览层 ---------- */
+  var OV = null;
+  function close() { if (OV && OV.parentNode) OV.parentNode.removeChild(OV); OV = null; document.body.style.overflow = ''; }
+  var CSS_ADDED = false;
+  function ensureCss() {
+    if (CSS_ADDED) return;
+    CSS_ADDED = true;
+    var s = document.createElement('style');
+    s.textContent = '.scov{position:fixed;left:0;top:0;right:0;bottom:0;z-index:120;background:rgba(4,7,11,.94);display:flex;flex-direction:column;padding:12px 12px 16px;}' +
+      '.scov-hd{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 10px;color:#9FB6C9;font-size:13px;letter-spacing:1px;}' +
+      '.scov-x{width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#CFE1EE;font-size:18px;line-height:32px;text-align:center;}' +
+      '.scov-body{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:flex-start;justify-content:center;}' +
+      '.scov-body canvas{width:100%;max-width:480px;height:auto;border-radius:14px;box-shadow:0 16px 48px rgba(0,0,0,.55);}' +
+      '.scov-bar{display:flex;gap:10px;padding-top:12px;}' +
+      '.scov-b1{flex:1;height:46px;border-radius:12px;border:1px solid rgba(53,211,154,.5);background:rgba(53,211,154,.14);color:#6FE3B4;font-size:15px;letter-spacing:1px;}' +
+      '.scov-b2{flex:1;height:46px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#CFE1EE;font-size:15px;letter-spacing:1px;}';
+    document.head.appendChild(s);
+  }
+
+  E.cardSave = function (cvs, share) {
+    var url;
+    try { url = cvs.toDataURL('image/png'); } catch (e) { E.toast && E.toast('导出失败'); return; }
+    var api = window.ENINativeApi;
+    if (api && api.shareImage) {
+      var r = 'err';
+      try { r = api.shareImage(url, share ? 1 : 0); } catch (e2) { r = 'err'; }
+      if (r === 'ok') { E.toast && E.toast(share ? '已打开系统分享' : '已保存到相册 Pictures/ENITools'); return; }
+      E.toast && E.toast('保存失败：' + r);
+      return;
+    }
+    var a = document.createElement('a');
+    a.href = url; a.download = 'ENITools-card-' + Date.now() + '.png';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    E.toast && E.toast('图片已下载');
+  };
+
+  E.cardOpen = function (kind) {
+    var cvs;
+    try { cvs = payload(kind); }
+    catch (e) { E.toast && E.toast((e && e.message) || '还生成不了这张卡'); return; }
+    ensureCss();
+    close();
+    OV = document.createElement('div');
+    OV.className = 'scov';
+    OV.innerHTML = '<div class="scov-hd"><span>分享卡片预览 · 1080×1440</span><button class="scov-x" data-scclose="1">✕</button></div>' +
+      '<div class="scov-body"></div>' +
+      '<div class="scov-bar"><button class="scov-b1" data-scsave="1">保存到相册</button>' +
+      '<button class="scov-b2" data-scshare="1">分享给好友</button></div>';
+    OV.querySelector('.scov-body').appendChild(cvs);
+    OV.addEventListener('click', function (ev) {
+      var t = ev.target.closest('[data-scclose],[data-scsave],[data-scshare]');
+      if (!t) { if (ev.target === OV) close(); return; }
+      if (t.hasAttribute('data-scclose')) { close(); return; }
+      if (t.hasAttribute('data-scsave')) { E.cardSave(cvs, false); return; }
+      E.cardSave(cvs, true);
+    });
+    document.body.appendChild(OV);
+    document.body.style.overflow = 'hidden';
+  };
+
+  /* ---------- 页面按钮自动注入（不依赖页面模板，3s 重绘后自动补回） ---------- */
+  function injectBtns() {
+    var top = document.querySelector('.mkd-top');
+    if (top && !top.querySelector('[data-sharecard]')) {
+      var b = document.createElement('button');
+      b.className = 'mkd-card';
+      b.setAttribute('data-sharecard', 'daily');
+      b.setAttribute('aria-label', '生成日报卡');
+      b.textContent = '卡';
+      var star = top.querySelector('.mkd-star');
+      if (star) top.insertBefore(b, star); else top.appendChild(b);
+    }
+
+    var hd = document.querySelector('.hdnav');
+    if (hd && hd.parentNode) {
+      var onBtn = hd.querySelector('.on'), k = onBtn && onBtn.getAttribute('data-hdt');
+      if (k === 'dist' || k === 'diff') {
+        var want = k === 'diff' ? 'diff' : 'band';
+        var label = '生成' + (k === 'diff' ? '新增打散' : '最佳区间') + '卡片';
+        var row = hd.parentNode.querySelector('.sc-row');
+        if (!row) {
+          row = document.createElement('div');
+          row.className = 'sc-row';
+          row.innerHTML = '<button class="sc-btn"></button>';
+          hd.parentNode.insertBefore(row, hd.nextSibling);
+        }
+        var btn = row.querySelector('.sc-btn');
+        if (btn) {
+          if (btn.getAttribute('data-sharecard') !== want) btn.setAttribute('data-sharecard', want);
+          if (btn.textContent !== label) btn.textContent = label;
+        }
+      }
+    }
+
+    var wrds = document.querySelectorAll('.wr-hd');
+    for (var i = 0; i < wrds.length; i++) {
+      var wr = wrds[i];
+      if (wr.querySelector('[data-sharecard]')) continue;
+      if (wr.textContent.indexOf('币源追踪') < 0) continue;
+      var r = wr.querySelector('.r');
+      if (!r) continue;
+      var b2 = document.createElement('button');
+      b2.className = 'sc-btn';
+      b2.setAttribute('data-sharecard', 'addr');
+      b2.textContent = '生成卡片';
+      if (r.textContent.replace(/\s/g, '').indexOf('生成卡片') >= 0) r.textContent = r.textContent.replace(/\s*·?\s*生成卡片\s*$/, '');
+      r.appendChild(document.createTextNode(' · '));
+      r.appendChild(b2);
+    }
+  }
+
+  E.cardInject = injectBtns;
+  function startWatch() {
+    injectBtns();
+    var view = document.getElementById('view') || document.body;
+    if (window.MutationObserver && view) {
+      var mo = new MutationObserver(function () { injectBtns(); });
+      mo.observe(view, { childList: true, subtree: true });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startWatch);
+  else startWatch();
+
+  /* 页面内按钮（事件委托，capture 抢先于 main.js） */
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-sharecard]');
+    if (!b) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    E.cardOpen(b.getAttribute('data-sharecard'));
+  }, true);
+
+  E.drawCard = payload;
+})();
+
 </script>
 </body>
 </html>
