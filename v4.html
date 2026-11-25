@@ -8560,7 +8560,7 @@ window.ENI = window.ENI || {};
 </script>
 
 <script>
-/* SC_CARDS_INLINE v1 */
+/* SC_CARDS_INLINE v2 */
 /* share.js — 一键分享卡片（纯 canvas 绘制，1080×1440，2x 导出） */
 (function () {
   var E = window.ENI;
@@ -8573,16 +8573,16 @@ window.ENI = window.ENI || {};
     blue: '#4FA8F5', blueLt: '#6FB6F7', line: 'rgba(255,255,255,0.07)'
   };
   var KIND_COL = {
-    buy: '#35D39A', p2p: '#4FA8F5', bridge: '#E8B64C', air: '#B88CF0',
-    cn: '#9FB6C9', mint: '#EF6B6B', other: '#7C93A7'
+    buy: '#26E894', p2p: '#4FA8F5', bridge: '#E8B64C', air: '#8CE8F9',
+    cn: '#A78BFA', burn: '#FF5C7A', mint: '#8CE8F9', other: '#7C93A7'
   };
   var KIND_LAB = {
     buy: 'DEX 路由买入', p2p: '钱包间转账', bridge: '跨链桥入金', air: '空投派发',
-    cn: '代币合约派发', mint: '铸造', other: '其它来源'
+    cn: '合约派发', burn: '销毁', mint: '铸造', other: '其它来源'
   };
   var KIND_HINT = {
     buy: '交易池 / 路由合约直买', p2p: '其它个人地址直接划转', bridge: '从跨链桥转入',
-    air: '空投合约派发', cn: '代币合约直接派发', mint: '铸造得到', other: '其它合约'
+    air: '空投合约派发', cn: '代币合约直接派发', burn: '销毁地址 / 销毁合约', mint: '铸造得到', other: '其它合约'
     };
 
   function nf(v, d) {
@@ -8937,7 +8937,7 @@ window.ENI = window.ENI || {};
     var c4 = [
       ['最新价', '$' + price.toFixed(dp), '24h 开 ' + s24.first.toFixed(dp) + '，' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', CL.accDim],
       ['24H 区间', s24.lo.toFixed(dp) + '–' + s24.hi.toFixed(dp), '振幅 ' + (s24.amp || 0).toFixed(1) + '%', '#EFF7FC'],
-      ['成交额', '$' + nf(s24.qv, 0), nf(s24.trades, 0) + ' 笔，均笔 $' + (s24.avg ? nf(s24.avg, 1) : '—'), '#EFF7FC'],
+      ['成交额', '$' + nf(s24.qv, 0), nf(s24.trades, 0) + ' 笔，均笔 $' + (s24.trades ? nf(s24.qv / s24.trades, 1) : '—'), '#EFF7FC'],
       ['买 / 卖笔数', buyN + ' / ' + sellN, '买占 ' + (s24.trades ? Math.round(buyN / s24.trades * 100) : 0) + '%', '#EFF7FC']
     ];
     c4.forEach(function (x, i) {
@@ -8956,9 +8956,9 @@ window.ENI = window.ENI || {};
     g.beginPath(); g.moveTo(100, 834); g.lineTo(980, 834);
     g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 1; g.stroke();
     T(g, '持币地址', 100, 852, 13, CL.dim2);
-    T(g, nf(nAll, 0), 176, 844, 26, '#EFF7FC', 600, true);
+    T(g, nAll ? nf(nAll, 0) : '—', 176, 844, 26, '#EFF7FC', 600, true);
     T(g, '合格 ≥100', 404, 852, 13, CL.dim2);
-    T(g, nf(nq, 0), 480, 844, 26, '#EFF7FC', 600, true);
+    T(g, nq ? nf(nq, 0) : '—', 480, 844, 26, '#EFF7FC', 600, true);
     T(g, '前 10 集中度', 676, 852, 13, CL.dim2);
     var p10 = 0;
     if (E.hold && E.hold.rows && E.hold.supply) {
