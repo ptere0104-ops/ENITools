@@ -3796,6 +3796,28 @@ window.ENI = window.ENI || {};
     });
   }
 
+  /* 来源地址归类：买入 / 跨链桥入 / 空投 / 合约派发 / 转账 */
+  var SRC_KIND = {
+    buy: { l: '买入', c: 'buy', col: '#26e894' },
+    bridge: { l: '跨链桥入', c: 'brdg', col: '#e8b64c' },
+    air: { l: '空投', c: 'mint', col: '#8ce8f9' },
+    cn: { l: '合约派发', c: 'gray', col: '#a78bfa' },
+    burn: { l: '销毁', c: 'wash', col: '#ff5c7a' },
+    mint: { l: '铸造', c: 'mint', col: '#8ce8f9' },
+    p2p: { l: '转账', c: 'wt', col: '#5d6879' }
+  };
+  function srcKindOf(addr, tok, book) {
+    var KN = E.HOLD_KNOWN || {};
+    var l = KN[addr] || (tok && addr === tok ? '代币合约' : (book && addr === book ? '交易池' : ''));
+    if (l === '交易池' || l === 'DEX 路由') return 'buy';
+    if (l === '跨链桥' || l === '桥代币') return 'bridge';
+    if (l === '空投合约') return 'air';
+    if (l === '代币合约') return 'cn';
+    if (l === '销毁') return 'burn';
+    if (/^0x0{40}$/.test(addr)) return 'mint';
+    return 'p2p';
+  }
+
   function csT(ts) {
     if (!ts) return '—';
     var d = new Date(ts * 1000), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
@@ -3879,11 +3901,23 @@ window.ENI = window.ENI || {};
     for (kk in g) left += g[kk].q;
     var src = Object.keys(g).map(function (x) { return g[x]; }).sort(function (x, y) { return y.q - x.q; });
     for (i = 0; i < src.length; i++) src[i].nIn = gIn[src[i].from] || 0;
+    /* 每个来源打类型，并按类型汇总剩余持仓 */
+    var kinds = [], kmap = {};
+    for (i = 0; i < src.length; i++) {
+      var kd = srcKindOf(src[i].from, p.token, pool);
+      src[i].k = kd;
+      if (!kmap[kd]) { kmap[kd] = { k: kd, q: 0, n: 0 }; kinds.push(kmap[kd]); }
+      kmap[kd].q += src[i].q;
+      kmap[kd].n += src[i].nIn;
+    }
+    kinds.sort(function (x, y) { return y.q - x.q; });
     var poolLeft = 0;
     for (i = 0; i < src.length; i++) if (src[i].from === pool) poolLeft += src[i].q;
     var fl = [];
     for (i = flows.length - 1; i >= 0 && fl.length < 60; i--) {
-      fl.push({ ts: flows[i].ts, d: flows[i].dir, cp: flows[i].dir > 0 ? flows[i].from : flows[i].to, q: flows[i].q });
+      var cp0 = flows[i].dir > 0 ? flows[i].from : flows[i].to;
+      fl.push({ ts: flows[i].ts, d: flows[i].dir, cp: cp0, q: flows[i].q,
+        k: srcKindOf(cp0, p.token, pool) });
     }
     /* 跨链桥外流：selector 0xd7310e6a = bridge(assetId,destChainId,recipient,inputAmount,extData) */
     var brg = [];
@@ -3901,7 +3935,7 @@ window.ENI = window.ENI || {};
       sellTot: sellTot, sellN: sellN, moveTot: moveTot, moveN: moveN, burnTot: burnTot,
       list: src, left: left, covered: rows.length, poolLeft: poolLeft,
       inT0: inT0, inT1: inT1, outT0: outT0, outT1: outT1, c24: c24, c24in: c24in, c24inQ: c24inQ, c24outQ: c24outQ,
-      c24srcN: Object.keys(c24src).length, bridges: brg, fl: fl
+      c24srcN: Object.keys(c24src).length, bridges: brg, fl: fl, kinds: kinds
     };
   }
 
@@ -3960,6 +3994,24 @@ window.ENI = window.ENI || {};
       var line = '<div class="cs-line">手上这 ' + f.num(st.left) + ' ' + p.base + ' 里，交易对买入占 ' +
         (st.left > 0 ? (st.poolLeft / st.left * 100).toFixed(1) : '0.0') + '%，其他地址转入占 ' +
         (st.left > 0 ? (100 - st.poolLeft / st.left * 100).toFixed(1) : '0.0') + '%。</div>';
+      /* 持仓来源构成：按来源类型给剩余持仓分色 */
+      var kn = st.kinds || [], knTot = 0;
+      kn.forEach(function (x) { knTot += x.q; });
+      if (!(knTot > 0)) knTot = st.left > 0 ? st.left : 1;
+      var kBar = kn.map(function (x) {
+        var w = x.q / knTot * 100, col = (SRC_KIND[x.k] || SRC_KIND.p2p).col;
+        return w >= 0.5 ? '<i style="width:' + w.toFixed(2) + '%;background:' + col + '"></i>' : '';
+      }).join('');
+      var kLg = kn.map(function (x) {
+        var kd = SRC_KIND[x.k] || SRC_KIND.p2p;
+        return '<span><s style="background:' + kd.col + '"></s>' + kd.l + ' <em>' +
+          (x.q / knTot * 100).toFixed(1) + '% · ' + csQ(x.q) + '</em></span>';
+      }).join('');
+      var kindBox = '<div class="hk-bands" style="margin:10px 0 0"><div class="hk-bt">' + kBar + '</div>' +
+        '<div class="hk-lg">' + kLg + '</div>' +
+        '<div class="hk-note">按剩余持仓的来源地址归类：池子/路由算买入，桥合约算跨链桥入，空投合约算空投，其余按个人转账计</div></div>';
+      var firstLine = st.inT0 ? '<div class="cs-line">首次获得 ' + csT(st.inT0) + '（' + csAgo(st.inT0) +
+        '）· 累计收到 ' + st.inN + ' 笔 · 现持 ' + f.num(st.left) + ' ' + p.base + '</div>' : '';
       var nowS = Math.floor(Date.now() / 1000);
       var lastAct = Math.max(st.inT1 || 0, st.outT1 || 0);
       var firstAct = st.inT0 && st.outT0 ? Math.min(st.inT0, st.outT0) : (st.inT0 || st.outT0 || 0);
@@ -4025,16 +4077,15 @@ window.ENI = window.ENI || {};
         ' · 净比 ' + (netRatio * 100).toFixed(2) + '%' +
         (brAll.length ? ' · 桥出 ' + brAll.length + ' 笔' : '') + '</div>' + whyHtml + '</div>';
       var rowsHtml = st.list.slice(0, 12).map(function (x) {
-        var isPool = x.from === pool, isMint = /^0x0{40}$/.test(x.from);
-        var cls = isPool ? 'buy' : (isMint ? 'mint' : 'wt');
-        var tag = isPool ? '交易对买入' : (isMint ? '铸造' : '地址转入');
+        var isPool = x.from === pool;
+        var kd = SRC_KIND[x.k] || (isPool ? SRC_KIND.buy : SRC_KIND.p2p);
         var pct = st.left > 0 ? (x.q / st.left * 100) : 0;
-        return '<div class="cs-row"><div class="cs-t"><b class="cs-tag ' + cls + '">' + tag + '</b>' +
-          '<span class="cs-ad">' + (isPool ? (p.base + '/' + p.quote + ' 交易对') : '<b class="ad-cp" data-cp="' + x.from + '">' + f.addr(x.from) + '</b>') + '</span></div>' +
+        return '<div class="cs-row"><div class="cs-t"><b class="cs-tag ' + kd.c + '">' + kd.l + '</b>' +
+          '<span class="cs-ad">' + (x.k === 'buy' ? (p.base + '/' + p.quote + ' 交易对') : '<b class="ad-cp" data-cp="' + x.from + '">' + f.addr(x.from) + '</b>') + '</span></div>' +
           '<div class="cs-n"><i>剩 ' + csQ(x.q) + ' ' + p.base + '</i><u>' + (pct >= 1 ? pct.toFixed(0) : pct.toFixed(1)) +
           '% · 转入 ' + x.nIn + ' 笔</u></div>' +
           '<div class="cs-bar"><i style="width:' + Math.max(2, Math.min(100, pct)).toFixed(0) + '%;background:' +
-          (isPool ? '#26e894' : (isMint ? '#8ce8f9' : '#f2c14e')) + '"></i></div></div>';
+          kd.col + '"></i></div></div>';
       }).join('');
       var more = st.list.length > 12 ? '<div class="cs-empty" style="padding:8px 0">还有 ' + (st.list.length - 12) + ' 个来源没展开</div>' : '';
       var none = st.list.length ? '' : '<div class="cs-empty" style="padding:10px 0">这个地址在这条交易对上没有余额，全部卖完或转走了。</div>';
@@ -4048,19 +4099,19 @@ window.ENI = window.ENI || {};
         if (filt === 'sell') return x.d < 0 && x.cp === pool;
         return true;
       }).slice(0, 12).map(function (x) {
-        var isBuy = x.d > 0 && x.cp === pool, isSell = x.d < 0 && x.cp === pool;
-        var isMint = x.d > 0 && /^0x0{40}$/.test(x.cp);
-        var cls = isBuy ? 'buy' : (isSell ? 'sell' : (isMint ? 'mint' : 'wt'));
-        var tag = isBuy ? '买入' : (isSell ? '卖出' : (isMint ? '铸造' : (x.d > 0 ? '转入' : '转出')));
+        var kd = SRC_KIND[x.k] || SRC_KIND.p2p;
+        var cls, tag;
+        if (x.d > 0) { cls = kd.c; tag = kd.l; }
+        else { cls = (x.k === 'buy' ? 'sell' : 'gray'); tag = (x.k === 'buy' ? '卖出' : (x.k === 'bridge' ? '跨链出' : '转出')); }
         return '<div class="cs-fr"><div class="l1">' +
           '<b class="cs-tag ' + cls + '">' + tag + '</b>' +
           '<span class="t">' + csT(x.ts) + '</span>' +
           '<span class="q">' + (x.d > 0 ? '+' : '-') + csQ(x.q) + '</span>' +
           '<span class="u">' + (csU(x.q, px) || '—') + '</span></div>' +
-          '<div class="l2">' + (isBuy || isSell ? (p.base + '/' + p.quote + ' 交易对') :
+          '<div class="l2">' + (x.d > 0 && x.k === 'buy' || x.d < 0 && x.k === 'buy' ? (p.base + '/' + p.quote + ' 交易对') :
             '<b class="ad-cp" data-cp="' + x.cp + '">' + f.addr(x.cp) + '</b>') + '</div></div>';
       }).join('') || '<div class="cs-empty" style="padding:10px 0">这个筛选下没有记录</div>';
-      body = kv + warn + line + an +
+      body = kv + warn + kindBox + firstLine + an +
         '<div class="ad-hd"><span>剩余持仓来源</span><b>数量 / 占比</b></div>' + rowsHtml + more + none +
         '<div class="ad-hd" style="margin-top:12px"><span>最近流水</span><b>' +
         (px > 0 ? '金额按现价 $' + (px >= 1 ? px.toFixed(4) : px.toPrecision(4)) : '数量') + '</b></div>' +
